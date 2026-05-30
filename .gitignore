@@ -1,0 +1,47 @@
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# VS Code
+.vscode/
+
+# Java / Spring Boot build outputs
+target/
+out/
+build/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local env / secrets
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.jks
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+
+# Frontend dependencies / builds
+node_modules/
+dist/
+coverage/
+
+# Python caches if any tooling is used
+__pycache__/
+*.pyc
+
+# Database files
+*.sqlite
+*.db

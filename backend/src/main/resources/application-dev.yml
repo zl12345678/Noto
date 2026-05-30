@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/noto_zhihui_dev
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  rabbitmq:
+    host: localhost
+  ai:
+    openai:
+      api-key: your-api-key
+      base-url: https://api.openai.com
