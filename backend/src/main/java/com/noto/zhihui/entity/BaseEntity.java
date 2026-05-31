@@ -22,5 +22,5 @@ public class BaseEntity {
     private LocalDateTime updatedAt;
 
     @TableLogic
-    private Integer deleted;
+    private Boolean deleted;
 }

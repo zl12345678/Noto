@@ -2,11 +2,13 @@ package com.noto.zhihui.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.time.LocalDateTime;
 
 @Data
-@TableName("user")
+@EqualsAndHashCode(callSuper = false)
+@TableName("sys_user")
 public class UserEntity extends BaseEntity {
 
     private String username;

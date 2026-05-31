@@ -1,0 +1,29 @@
+package com.noto.zhihui.config;
+
+import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
+import org.apache.ibatis.reflection.MetaObject;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import java.time.LocalDateTime;
+
+@Configuration
+public class MybatisPlusConfig {
+
+    @Bean
+    public MetaObjectHandler metaObjectHandler() {
+        return new MetaObjectHandler() {
+            @Override
+            public void insertFill(MetaObject metaObject) {
+                strictInsertFill(metaObject, "createdAt", LocalDateTime.class, LocalDateTime.now());
+                strictInsertFill(metaObject, "updatedAt", LocalDateTime.class, LocalDateTime.now());
+                strictInsertFill(metaObject, "deleted", Boolean.class, false);
+            }
+
+            @Override
+            public void updateFill(MetaObject metaObject) {
+                strictUpdateFill(metaObject, "updatedAt", LocalDateTime.class, LocalDateTime.now());
+            }
+        };
+    }
+}

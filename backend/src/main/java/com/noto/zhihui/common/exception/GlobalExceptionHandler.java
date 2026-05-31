@@ -2,6 +2,7 @@ package com.noto.zhihui.common.exception;
 
 import com.noto.zhihui.common.api.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -16,7 +17,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ApiResponse<Object> handleValidationException(MethodArgumentNotValidException ex, HttpServletRequest request) {
-        return ApiResponse.failure(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage(), getTraceId(request));
+        String message = ErrorCode.BAD_REQUEST.getMessage();
+        FieldError fieldError = ex.getBindingResult().getFieldError();
+        if (fieldError != null && fieldError.getDefaultMessage() != null) {
+            message = fieldError.getDefaultMessage();
+        }
+        return ApiResponse.failure(ErrorCode.BAD_REQUEST.getCode(), message, getTraceId(request));
     }
 
     @ExceptionHandler(Exception.class)

@@ -9,6 +9,8 @@ public enum ErrorCode {
 
     SUCCESS(0, "success"),
     BAD_REQUEST(40001, "参数错误"),
+    USERNAME_EXISTS(40006, "用户名已存在"),
+    EMAIL_EXISTS(40007, "邮箱已存在"),
     UNAUTHORIZED(40002, "未登录"),
     FORBIDDEN(40003, "无权限"),
     NOT_FOUND(40004, "资源不存在"),
