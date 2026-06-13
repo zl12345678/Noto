@@ -11,20 +11,17 @@ spring:
     username: postgres
     password: 123456
     driver-class-name: org.postgresql.Driver
-  data:
-    redis:
-      host: localhost
-      port: 6379
-      password:
-  rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
   servlet:
     multipart:
-      max-file-size: 20MB
-      max-request-size: 20MB
+      max-file-size: 100MB
+      max-request-size: 100MB
+  ai:
+    dashscope:
+      api-key: ${AI_DASHSCOPE_API_KEY:}
+      chat:
+        options:
+          model: ${noto.ai.model:qwen-plus}
+          temperature: 0.3
 
 mybatis-plus:
   configuration:
@@ -48,4 +45,17 @@ management:
 
 noto:
   ai:
-    enabled: true
+    enabled: false
+    model: qwen-plus
+    rag-pgvector-enabled: true
+    rag-embedding-dimensions: 1024
+    rag-max-chunks-scan: 3000
+  demo:
+    enabled: ${NOTO_DEMO_ENABLED:false}
+  minio:
+    enabled: false
+    endpoint: http://localhost:9000
+    access-key: minioadmin
+    secret-key: minioadmin
+    bucket: noto
+    max-file-size-bytes: 104857600

@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+  devtools:
+    restart:
+      enabled: false
+
+noto:
+  ai:
+    enabled: false
+  minio:
+    enabled: false
+
+logging:
+  level:
+    com.noto.zhihui: warn

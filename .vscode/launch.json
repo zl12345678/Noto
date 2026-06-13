@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Backend (Attach Debug)",
+      "request": "attach",
+      "hostName": "localhost",
+      "port": 5005,
+      "projectName": "zhihui-backend"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Backend (DevTools 热部署)",
+      "configurations": ["Backend (Attach Debug)"],
+      "preLaunchTask": "backend: dev (debug)",
+      "stopAll": true
+    }
+  ]
+}

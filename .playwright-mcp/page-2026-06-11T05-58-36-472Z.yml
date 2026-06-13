@@ -1,0 +1,49 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e8]: Noto 知微
+        - heading "笔记、待办与提醒，在一个工作台里衔接" [level=1] [ref=e9]
+        - paragraph [ref=e10]: 写文档时关联任务，到期时收到提醒，需要时让 AI 帮你整理要点。
+      - generic [ref=e11]:
+        - generic [ref=e12]:
+          - strong [ref=e13]: 文档
+          - text: 多知识库与 Markdown
+        - generic [ref=e14]:
+          - strong [ref=e15]: 待办
+          - text: 队列与进行中看板
+        - generic [ref=e16]:
+          - strong [ref=e17]: 提醒
+          - text: 到期通知与复盘
+    - generic [ref=e19]:
+      - generic [ref=e20]:
+        - generic [ref=e21]: 登录
+        - heading "欢迎回来" [level=2] [ref=e22]
+        - text: 使用账号密码进入工作台
+      - generic [ref=e23]:
+        - generic [ref=e25]:
+          - generic "用户名" [ref=e27]: "* 用户名"
+          - textbox "* 用户名" [ref=e31]:
+            - /placeholder: 你的用户名
+            - text: admin
+        - generic [ref=e33]:
+          - generic "密码" [ref=e35]: "* 密码"
+          - generic [ref=e39]:
+            - textbox "* 密码" [ref=e40]:
+              - /placeholder: 你的密码
+              - text: admin123
+            - img "eye-invisible" [ref=e42] [cursor=pointer]:
+              - img [ref=e43]
+        - generic [ref=e46]:
+          - generic [ref=e47] [cursor=pointer]:
+            - checkbox "记住密码" [checked] [ref=e49]
+            - generic [ref=e51]: 记住密码
+          - button "忘记密码" [ref=e52] [cursor=pointer]:
+            - generic [ref=e53]: 忘记密码
+        - button "登 录" [ref=e54] [cursor=pointer]:
+          - generic [ref=e55]: 登 录
+        - generic [ref=e56]: 还没有账号？注册
+  - generic [ref=e58]:
+    - img "exclamation-circle" [ref=e59]:
+      - img [ref=e60]
+    - text: 请先登录

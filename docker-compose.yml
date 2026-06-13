@@ -1,0 +1,91 @@
+name: noto
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: noto-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-noto_zhihui}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./建表SQL.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-noto_zhihui}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: noto-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-noto_zhihui}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      NOTO_JWT_SECRET: ${NOTO_JWT_SECRET:-noto-zhihui-docker-secret-key-32b}
+      NOTO_AI_ENABLED: ${NOTO_AI_ENABLED:-false}
+      AI_DASHSCOPE_API_KEY: ${AI_DASHSCOPE_API_KEY:-}
+      NOTO_DEMO_ENABLED: ${NOTO_DEMO_ENABLED:-true}
+      NOTO_MINIO_ENABLED: ${NOTO_MINIO_ENABLED:-true}
+      NOTO_MINIO_ENDPOINT: http://minio:9000
+      NOTO_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      NOTO_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      NOTO_MINIO_BUCKET: ${NOTO_MINIO_BUCKET:-noto}
+    ports:
+      - "${BACKEND_PORT:-9086}:9086"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9086/api/v1/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 40s
+
+  minio:
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    container_name: noto-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: noto-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+
+volumes:
+  postgres_data:
+  minio_data:

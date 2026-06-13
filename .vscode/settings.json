@@ -1,0 +1,34 @@
+{
+  "java.autobuild.enabled": false,
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "java.import.maven.enabled": true,
+  "java.jdt.ls.lombokSupport": true,
+  "java.compile.annotationProcessorsEnabled": true,
+  "java.debug.settings.forceBuildBeforeLaunch": false,
+  "java.configuration.runtimes": [
+    {
+      "name": "JavaSE-17",
+      "path": "C:\\Program Files\\Java\\jdk-17",
+      "default": true
+    }
+  ],
+  "terminal.integrated.env.windows": {
+    "JAVA_HOME": "C:\\Program Files\\Java\\jdk-17"
+  },
+  "files.watcherExclude": {
+    "**/frontend/node_modules/**": true
+  },
+  "emeraldwalk.runonsave": {
+    "commands": [
+      {
+        "match": "backend[\\\\/]src[\\\\/]main[\\\\/]java[\\\\/].*\\.java$",
+        "cmd": "${workspaceFolder}\\backend\\mvnw.cmd -q compile -DskipTests"
+      },
+      {
+        "match": "backend[\\\\/]src[\\\\/]main[\\\\/]resources[\\\\/].*",
+        "cmd": "${workspaceFolder}\\backend\\mvnw.cmd -q process-resources"
+      }
+    ]
+  },
+  "java.compile.nullAnalysis.mode": "automatic"
+}

@@ -1,0 +1,208 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "backend: compile",
+      "type": "shell",
+      "command": "cmd",
+      "args": ["/d", "/c", "mvnw.cmd", "-q", "process-resources", "compile", "-DskipTests"],
+      "options": {
+        "cwd": "${workspaceFolder}/backend",
+        "env": {
+          "JAVA_HOME": "C:\\Program Files\\Java\\jdk-17"
+        }
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": ["$javac"]
+    },
+    {
+      "label": "backend: reload-trigger",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "(Get-Item '.reloadtrigger').LastWriteTime = Get-Date"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "backend: compile (devtools)",
+      "dependsOrder": "sequence",
+      "dependsOn": ["backend: compile", "backend: reload-trigger"],
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "backend: stop",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "$conn = Get-NetTCPConnection -LocalPort 9086 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1; if ($conn) { Stop-Process -Id $conn.OwningProcess -Force -ErrorAction SilentlyContinue; Write-Host ('Stopped backend PID ' + $conn.OwningProcess) } else { Write-Host 'No backend listening on port 9086' }"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "backend: dev",
+      "type": "shell",
+      "command": "cmd",
+      "args": ["/d", "/c", "mvnw.cmd", "spring-boot:run"],
+      "options": {
+        "cwd": "${workspaceFolder}/backend",
+        "env": {
+          "JAVA_HOME": "C:\\Program Files\\Java\\jdk-17",
+          "SPRING_PROFILES_ACTIVE": "dev",
+          "NOTO_DEMO_ENABLED": "true"
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": [
+        {
+          "owner": "custom",
+          "pattern": {
+            "regexp": "^(.*)$"
+          },
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "^(.*Scanning for projects.*|.*Building.*)$",
+            "endsPattern": "^(.*Started ZhihuiApplication.*|.*APPLICATION FAILED TO START.*)$"
+          }
+        }
+      ],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": false
+      }
+    },
+    {
+      "label": "backend: dev (debug)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "$conn = Get-NetTCPConnection -LocalPort 9086 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1; if ($conn) { Stop-Process -Id $conn.OwningProcess -Force -ErrorAction SilentlyContinue; Write-Host ('Stopped backend PID ' + $conn.OwningProcess); Start-Sleep -Seconds 1 }; cmd /d /c mvnw.cmd spring-boot:run -Plocal-debug"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/backend",
+        "env": {
+          "JAVA_HOME": "C:\\Program Files\\Java\\jdk-17",
+          "SPRING_PROFILES_ACTIVE": "dev",
+          "NOTO_DEMO_ENABLED": "true"
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": [
+        {
+          "owner": "custom",
+          "pattern": {
+            "regexp": "^(.*)$"
+          },
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "^(.*Scanning for projects.*|.*Building.*)$",
+            "endsPattern": "^(.*Started ZhihuiApplication.*|.*APPLICATION FAILED TO START.*)$"
+          }
+        }
+      ],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": false
+      }
+    },
+    {
+      "label": "backend: reset demo seed",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/reset-demo-seed.ps1"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "backend: dev (演示数据)",
+      "dependsOrder": "sequence",
+      "dependsOn": ["backend: reset demo seed", "backend: dev"],
+      "problemMatcher": []
+    },
+    {
+      "label": "backend: dev (no demo)",
+      "type": "shell",
+      "command": "cmd",
+      "args": ["/d", "/c", "mvnw.cmd", "spring-boot:run"],
+      "options": {
+        "cwd": "${workspaceFolder}/backend",
+        "env": {
+          "JAVA_HOME": "C:\\Program Files\\Java\\jdk-17",
+          "SPRING_PROFILES_ACTIVE": "dev",
+          "NOTO_DEMO_ENABLED": "false"
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": [
+        {
+          "owner": "custom",
+          "pattern": {
+            "regexp": "^(.*)$"
+          },
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "^(.*Scanning for projects.*|.*Building.*)$",
+            "endsPattern": "^(.*Started ZhihuiApplication.*|.*APPLICATION FAILED TO START.*)$"
+          }
+        }
+      ],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": false
+      }
+    },
+    {
+      "label": "frontend: dev",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "dev"],
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "isBackground": true,
+      "problemMatcher": [
+        {
+          "owner": "custom",
+          "pattern": {
+            "regexp": "^(.*)$"
+          },
+          "background": {
+            "activeOnStart": true,
+            "endsPattern": "^(.*Local:.*http://localhost:5173.*)$"
+          }
+        }
+      ],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    }
+  ]
+}

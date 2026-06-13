@@ -4,8 +4,16 @@
 *.iws
 *.ipr
 
-# VS Code
-.vscode/
+# VS Code（保留团队共享的开发配置）
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+
+# DevTools 手动触发重启
+.reloadtrigger
+backend/.reloadtrigger
 
 # Java / Spring Boot build outputs
 target/

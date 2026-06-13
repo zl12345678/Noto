@@ -1,13 +1,34 @@
 spring:
   datasource:
-    url: jdbc:postgresql://prod-db:5432/noto_zhihui
-  data:
-    redis:
-      host: prod-redis
-      port: 6379
-  rabbitmq:
-    host: prod-rabbitmq
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/noto_zhihui}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+noto:
+  security:
+    jwt-secret: ${NOTO_JWT_SECRET:noto-zhihui-default-secret-key-32chars}
   ai:
-    openai:
-      api-key: replace-with-prod-key
-      base-url: https://api.openai.com
+    enabled: ${NOTO_AI_ENABLED:false}
+    model: ${NOTO_AI_MODEL:qwen-plus}
+    api-key: ${AI_DASHSCOPE_API_KEY:}
+    rag-enabled: ${NOTO_AI_RAG_ENABLED:true}
+  minio:
+    enabled: ${NOTO_MINIO_ENABLED:false}
+    endpoint: ${NOTO_MINIO_ENDPOINT:http://localhost:9000}
+    access-key: ${NOTO_MINIO_ACCESS_KEY:minioadmin}
+    secret-key: ${NOTO_MINIO_SECRET_KEY:minioadmin}
+    bucket: ${NOTO_MINIO_BUCKET:noto}
+  demo:
+    enabled: ${NOTO_DEMO_ENABLED:false}
+
+logging:
+  level:
+    com.noto.zhihui: info
+    root: warn
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

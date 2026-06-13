@@ -1,11 +1,21 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { message } from 'ant-design-vue';
 import { useAuthStore } from '../store/auth';
-import LoginView from '../views/auth/LoginView.vue';
-import RegisterView from '../views/auth/RegisterView.vue';
-import ForgotPasswordView from '../views/auth/ForgotPasswordView.vue';
 import AppLayout from '../layouts/AppLayout.vue';
-import DashboardView from '../views/dashboard/DashboardView.vue';
+
+const LoginView = () => import('../views/auth/LoginView.vue');
+const RegisterView = () => import('../views/auth/RegisterView.vue');
+const ForgotPasswordView = () => import('../views/auth/ForgotPasswordView.vue');
+const DashboardView = () => import('../views/dashboard/DashboardView.vue');
+const ProfileView = () => import('../views/profile/ProfileView.vue');
+const NotesView = () => import('../views/notes/NotesView.vue');
+const SearchView = () => import('../views/search/SearchView.vue');
+const TodosView = () => import('../views/todos/TodosView.vue');
+const RemindersView = () => import('../views/reminders/RemindersView.vue');
+const AiView = () => import('../views/ai/AiView.vue');
+const DriveView = () => import('../views/drive/DriveView.vue');
+const MySharesView = () => import('../views/share/MySharesView.vue');
+const ShareView = () => import('../views/share/ShareView.vue');
 
 const router = createRouter({
   history: createWebHistory(),
@@ -14,18 +24,24 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: LoginView,
-      meta: { public: true },
+      meta: { public: true, guestOnly: true },
     },
     {
       path: '/register',
       name: 'register',
       component: RegisterView,
-      meta: { public: true },
+      meta: { public: true, guestOnly: true },
     },
     {
       path: '/forgot-password',
       name: 'forgot-password',
       component: ForgotPasswordView,
+      meta: { public: true, guestOnly: true },
+    },
+    {
+      path: '/share/:token',
+      name: 'share',
+      component: ShareView,
       meta: { public: true },
     },
     {
@@ -36,6 +52,50 @@ const router = createRouter({
           path: '',
           name: 'dashboard',
           component: DashboardView,
+        },
+        {
+          path: 'profile',
+          name: 'profile',
+          component: ProfileView,
+        },
+        {
+          path: 'notes/:id?',
+          name: 'notes',
+          component: NotesView,
+        },
+        {
+          path: 'search',
+          name: 'search',
+          component: SearchView,
+        },
+        {
+          path: 'drive',
+          name: 'drive',
+          component: DriveView,
+        },
+        {
+          path: 'shares',
+          name: 'my-shares',
+          component: MySharesView,
+        },
+        {
+          path: 'todos',
+          name: 'todos',
+          component: TodosView,
+        },
+        {
+          path: 'reminders',
+          name: 'reminders',
+          component: RemindersView,
+        },
+        {
+          path: 'ai',
+          name: 'ai',
+          component: AiView,
+        },
+        {
+          path: 'ai/agent',
+          redirect: '/ai',
         },
       ],
     },
@@ -59,7 +119,7 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.public) {
-    if (authStore.isAuthenticated) {
+    if (authStore.isAuthenticated && to.meta.guestOnly) {
       return '/';
     }
     return true;

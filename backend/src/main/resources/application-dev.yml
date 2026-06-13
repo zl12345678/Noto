@@ -2,12 +2,41 @@ spring:
   devtools:
     restart:
       enabled: true
-      additional-paths: src/main/java,src/main/resources
+      poll-interval: 1s
+      quiet-period: 400ms
+      trigger-file: .reloadtrigger
+      additional-exclude: static/**,public/**
     livereload:
-      enabled: true
-  thymeleaf:
-    cache: false
+      enabled: false
+  datasource:
+    url: jdbc:postgresql://localhost:5432/noto_zhihui_dev
+    username: postgres
+    password: 123456
+    driver-class-name: org.postgresql.Driver
 
 logging:
   level:
     org.springframework.boot.devtools: info
+
+# 启用 AI：NOTO_AI_ENABLED=true 且配置 AI_DASHSCOPE_API_KEY（阿里云百炼/通义）
+noto:
+  ai:
+    enabled: ${NOTO_AI_ENABLED:true}
+    model: qwen-turbo
+    api-key: ${AI_DASHSCOPE_API_KEY:}
+  demo:
+    enabled: ${NOTO_DEMO_ENABLED:true}
+  minio:
+    enabled: true
+    endpoint: http://localhost:9000
+    access-key: minioadmin
+    secret-key: minioadmin
+    bucket: noto
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha

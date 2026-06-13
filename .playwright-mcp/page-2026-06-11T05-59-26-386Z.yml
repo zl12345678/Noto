@@ -1,0 +1,317 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - complementary [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - generic [ref=e8]: "N"
+          - generic [ref=e10]: Noto
+        - generic [ref=e13]:
+          - textbox "搜索知识库" [ref=e15]
+          - button "search" [ref=e18] [cursor=pointer]:
+            - img "search" [ref=e19]:
+              - img [ref=e20]
+        - generic [ref=e22]:
+          - paragraph [ref=e23]: 工作台
+          - menu [ref=e24]:
+            - menuitem "首页" [ref=e25] [cursor=pointer]:
+              - generic [ref=e29]: 首页
+            - menuitem "搜索" [ref=e30] [cursor=pointer]:
+              - generic [ref=e34]: 搜索
+        - generic [ref=e35]:
+          - paragraph [ref=e36]: 任务协作
+          - menu [ref=e37]:
+            - menuitem "待办中心 4" [ref=e152] [cursor=pointer]:
+              - generic [ref=e40]:
+                - generic [ref=e42]: 待办中心
+                - superscript [ref=e154]:
+                  - paragraph [ref=e156]: "4"
+            - menuitem "提醒" [ref=e43] [cursor=pointer]:
+              - generic [ref=e47]: 提醒
+        - generic [ref=e48]:
+          - paragraph [ref=e49]: 智能辅助
+          - menu [ref=e50]:
+            - menuitem "AI 助手" [ref=e51] [cursor=pointer]:
+              - generic [ref=e55]: AI 助手
+        - generic [ref=e56]:
+          - generic [ref=e57]:
+            - paragraph [ref=e58]: 知识库列表
+            - button "新建" [ref=e59] [cursor=pointer]:
+              - generic [ref=e60]: 新建
+          - menu [ref=e157]:
+            - menuitem "我的空间" [ref=e158] [cursor=pointer]:
+              - generic [ref=e162]: 我的空间
+    - generic "拖拽调整宽度，点击箭头收起/展开" [ref=e63]:
+      - generic:
+        - img "left":
+          - img
+  - generic [ref=e64]:
+    - generic [ref=e65]:
+      - generic [ref=e163]:
+        - button "arrow-left" [ref=e164] [cursor=pointer]:
+          - img "arrow-left" [ref=e165]:
+            - img [ref=e166]
+        - button "menu-fold" [ref=e168] [cursor=pointer]:
+          - img "menu-fold" [ref=e169]:
+            - img [ref=e170]
+        - button "返回" [ref=e172] [cursor=pointer]
+      - generic [ref=e66]:
+        - generic [ref=e68]:
+          - textbox "搜索文档..." [ref=e70]
+          - button "search" [ref=e73] [cursor=pointer]:
+            - img "search" [ref=e74]:
+              - img [ref=e75]
+        - generic [ref=e77]:
+          - button "check-square 待办" [ref=e78] [cursor=pointer]:
+            - img "check-square" [ref=e79]:
+              - img [ref=e80]
+            - generic [ref=e83]: 待办
+          - superscript [ref=e173]:
+            - paragraph [ref=e175]: "4"
+        - generic [ref=e86] [cursor=pointer]: 管
+    - main [ref=e87]:
+      - alert [ref=e177]:
+        - img "close-circle" [ref=e178]:
+          - img [ref=e179]
+        - generic [ref=e182]: 你有 1 项逾期、4 项待处理，现在完成一件吧
+        - button "立即处理" [ref=e184] [cursor=pointer]:
+          - generic [ref=e185]: 立即处理
+      - generic [ref=e89]:
+        - complementary [ref=e90]:
+          - generic [ref=e91]:
+            - generic [ref=e92]:
+              - heading "我的空间" [level=2] [ref=e186]
+              - generic [ref=e94]:
+                - button "question-circle" [ref=e96] [cursor=pointer]:
+                  - img "question-circle" [ref=e97]:
+                    - img [ref=e98]
+                - button "新 建" [ref=e102] [cursor=pointer]:
+                  - generic [ref=e103]: 新 建
+            - generic [ref=e105]:
+              - textbox "搜索文档" [ref=e107]
+              - button "search" [ref=e110] [cursor=pointer]:
+                - img "search" [ref=e111]:
+                  - img [ref=e112]
+            - generic [ref=e115]:
+              - generic [ref=e116] [cursor=pointer]:
+                - radio "全部" [checked]
+                - generic [ref=e117]: 全部
+              - generic [ref=e118] [cursor=pointer]:
+                - radio "收藏"
+                - generic [ref=e119]: 收藏
+              - generic [ref=e120] [cursor=pointer]:
+                - radio "最近"
+                - generic [ref=e121]: 最近
+              - generic [ref=e122] [cursor=pointer]:
+                - radio "归档"
+                - generic [ref=e123]: 归档
+          - tree [ref=e187]:
+            - generic:
+              - textbox "for screen reader"
+            - generic [ref=e191]:
+              - generic [ref=e196] [cursor=pointer]: 首页
+              - generic [ref=e197]:
+                - img "caret-down" [ref=e199] [cursor=pointer]:
+                  - img [ref=e200]
+                - generic [ref=e204] [cursor=pointer]: 明天
+              - generic [ref=e205]:
+                - img "caret-down" [ref=e207] [cursor=pointer]:
+                  - img [ref=e208]
+                - generic [ref=e212] [cursor=pointer]: 默认文件夹
+              - generic [ref=e442]:
+                - img "caret-down" [ref=e445] [cursor=pointer]:
+                  - img [ref=e446]
+                - generic [ref=e450] [cursor=pointer]: Noto 功能导览
+              - generic [ref=e451]:
+                - img "caret-down" [ref=e454] [cursor=pointer]:
+                  - img [ref=e455]
+                - generic [ref=e459] [cursor=pointer]: 周会纪要 · MVP 演示
+              - generic [ref=e213]:
+                - img "caret-down" [ref=e215] [cursor=pointer]:
+                  - img [ref=e216]
+                - generic [ref=e220] [cursor=pointer]: 洗澡
+        - generic "拖拽调整宽度，点击箭头收起/展开" [ref=e137]:
+          - generic:
+            - img "left":
+              - img
+        - generic [ref=e138]:
+          - generic [ref=e221]:
+            - generic [ref=e223]:
+              - button "thunderbolt AI" [ref=e224] [cursor=pointer]:
+                - img "thunderbolt" [ref=e225]:
+                  - img [ref=e226]
+                - generic [ref=e228]: AI
+              - button "link 上下文" [ref=e229] [cursor=pointer]:
+                - img "link" [ref=e230]:
+                  - img [ref=e231]
+                - generic [ref=e233]: 上下文
+              - button "待办 down" [ref=e234] [cursor=pointer]:
+                - generic [ref=e235]: 待办
+                - img "down" [ref=e236]:
+                  - img [ref=e237]
+              - button "paper-clip 附件" [ref=e239] [cursor=pointer]:
+                - img "paper-clip" [ref=e240]:
+                  - img [ref=e241]
+                - generic [ref=e243]: 附件
+              - separator [ref=e244]
+              - button "恢复" [ref=e245] [cursor=pointer]:
+                - generic [ref=e246]: 恢复
+              - button "保 存" [disabled] [ref=e247]:
+                - generic [ref=e248]: 保 存
+            - textbox "无标题文档" [ref=e250]: 首页
+            - generic [ref=e253]:
+              - generic [ref=e256]:
+                - generic "加粗" [ref=e257] [cursor=pointer]:
+                  - img [ref=e258]
+                - generic "下划线" [ref=e260] [cursor=pointer]:
+                  - img [ref=e261]
+                - generic "斜体" [ref=e263] [cursor=pointer]:
+                  - img [ref=e264]
+                - generic "删除线" [ref=e266] [cursor=pointer]:
+                  - img [ref=e267]
+                - generic "标题" [ref=e271] [cursor=pointer]:
+                  - img [ref=e272]
+                - generic "下标" [ref=e273] [cursor=pointer]:
+                  - img [ref=e274]
+                - generic "上标" [ref=e278] [cursor=pointer]:
+                  - img [ref=e279]
+                - generic "引用" [ref=e283] [cursor=pointer]:
+                  - img [ref=e284]
+                - generic "无序列表" [ref=e287] [cursor=pointer]:
+                  - img [ref=e288]
+                - generic "有序列表" [ref=e289] [cursor=pointer]:
+                  - img [ref=e290]
+                - generic "任务列表" [ref=e293] [cursor=pointer]:
+                  - img [ref=e294]
+                - generic "行内代码" [ref=e298] [cursor=pointer]:
+                  - img [ref=e299]
+                - generic "块级代码" [ref=e302] [cursor=pointer]:
+                  - img [ref=e303]
+                - generic "链接" [ref=e307] [cursor=pointer]:
+                  - img [ref=e308]
+                - generic "图片" [ref=e311] [cursor=pointer]:
+                  - img [ref=e312]
+                - generic "表格" [ref=e316] [cursor=pointer]:
+                  - img [ref=e317]
+                - generic "后退" [ref=e320] [cursor=pointer]:
+                  - img [ref=e321]
+                - generic "前进" [ref=e324] [cursor=pointer]:
+                  - img [ref=e325]
+                - generic "保存" [ref=e328] [cursor=pointer]:
+                  - img [ref=e329]
+                - generic "浏览器全屏" [ref=e334] [cursor=pointer]:
+                  - img [ref=e335]
+                - generic "屏幕全屏" [ref=e340] [cursor=pointer]:
+                  - img [ref=e341]
+                - generic "预览" [ref=e346] [cursor=pointer]:
+                  - img [ref=e347]
+                - generic "目录" [ref=e350] [cursor=pointer]:
+                  - img [ref=e351]
+              - generic [ref=e355]:
+                - textbox [ref=e359]:
+                  - generic [ref=e360]: "# 我的空间"
+                  - generic [ref=e362]: 欢迎来到 **我的空间** 首页。
+                  - generic [ref=e364]: "- 在此整理重点与导航链接"
+                  - generic [ref=e365]: "- 左侧树：首页 → 一级分组 → 文档与子文档"
+                  - generic [ref=e366]: "- 点击分组可浏览目录内容"
+                - generic [ref=e370]:
+                  - heading "我的空间" [level=1] [ref=e371]
+                  - paragraph [ref=e372]:
+                    - text: 欢迎来到
+                    - strong [ref=e373]: 我的空间
+                    - text: 首页。
+                  - list [ref=e374]:
+                    - listitem [ref=e375]: 在此整理重点与导航链接
+                    - listitem [ref=e376]: 左侧树：首页 → 一级分组 → 文档与子文档
+                    - listitem [ref=e377]: 点击分组可浏览目录内容
+              - generic [ref=e378]:
+                - generic [ref=e380]:
+                  - generic [ref=e381]: "字数:"
+                  - generic [ref=e382]: "80"
+                - generic [ref=e384]:
+                  - generic [ref=e385]: 同步滚动
+                  - generic [ref=e386] [cursor=pointer]: ✓
+          - generic:
+            - complementary:
+              - complementary:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img "thunderbolt":
+                        - img
+                    - generic:
+                      - generic: AI 助手
+                      - generic: 在线
+                  - button "关闭 AI 助手":
+                    - img "close":
+                      - img
+                - tablist:
+                  - tab "常用" [selected]
+                  - tab "写作"
+                  - tab "问答"
+                  - tab "相关"
+                - generic:
+                  - generic:
+                    - generic:
+                      - button "file-text 摘要":
+                        - img "file-text":
+                          - img
+                        - generic: 摘要
+                      - button "highlight 润色":
+                        - img "highlight":
+                          - img
+                        - generic: 润色
+                      - button "unordered-list 条文化":
+                        - img "unordered-list":
+                          - img
+                        - generic: 条文化
+                      - button "robot 提取待办":
+                        - img "robot":
+                          - img
+                        - generic: 提取待办
+                      - button "scan 规则提取":
+                        - img "scan":
+                          - img
+                        - generic: 规则提取
+                    - generic:
+                      - switch "保存时自动摘要" [checked]
+                      - generic: 保存时自动摘要
+          - complementary [ref=e387]:
+            - complementary [ref=e388]:
+              - generic [ref=e389]:
+                - heading "文档上下文" [level=3] [ref=e391]
+                - button "关闭" [ref=e392] [cursor=pointer]:
+                  - img "close" [ref=e393]:
+                    - img [ref=e394]
+              - generic [ref=e396]:
+                - generic [ref=e397]:
+                  - heading "关联待办" [level=4] [ref=e399]
+                  - generic [ref=e402]:
+                    - img "inbox" [ref=e403]:
+                      - img [ref=e404]
+                    - heading "暂无关联待办" [level=3] [ref=e406]
+                  - generic [ref=e407]:
+                    - button "提取待办" [ref=e409] [cursor=pointer]:
+                      - generic [ref=e410]: 提取待办
+                    - button "新建近期行动" [ref=e412] [cursor=pointer]:
+                      - generic [ref=e413]: 新建近期行动
+                - generic [ref=e414]:
+                  - generic [ref=e415]:
+                    - heading "相关文档" [level=4] [ref=e416]
+                    - button "刷新" [ref=e417] [cursor=pointer]:
+                      - generic [ref=e418]: 刷新
+                  - generic [ref=e421]:
+                    - img "file-text" [ref=e422]:
+                      - img [ref=e423]
+                    - heading "暂无相关文档" [level=3] [ref=e425]
+          - complementary [ref=e426]:
+            - generic [ref=e427]:
+              - heading "附件" [level=3] [ref=e428]
+              - button "关闭" [ref=e429] [cursor=pointer]:
+                - generic [ref=e430]: 关闭
+            - generic [ref=e431]:
+              - generic [ref=e432]:
+                - button "上传附件" [ref=e435]:
+                  - button "上传附件" [ref=e436] [cursor=pointer]:
+                    - generic [ref=e437]: 上传附件
+                - generic [ref=e438]: 0 个文件
+              - paragraph [ref=e441]: 暂无附件，可上传图片或文件

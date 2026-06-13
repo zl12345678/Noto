@@ -15,6 +15,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserEntity> impleme
         if (!StringUtils.hasText(username)) {
             return null;
         }
-        return lambdaQuery().eq(UserEntity::getUsername, username).one();
+        return query().eq("username", username.trim()).one();
+    }
+
+    @Override
+    public UserEntity findByEmail(String email) {
+        if (!StringUtils.hasText(email)) {
+            return null;
+        }
+        return query().eq("email", email.trim()).one();
     }
 }

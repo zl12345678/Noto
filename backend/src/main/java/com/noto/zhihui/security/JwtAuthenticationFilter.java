@@ -1,5 +1,6 @@
 package com.noto.zhihui.security;
 
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,7 +24,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
+    protected boolean shouldNotFilterAsyncDispatch() {
+        return false;
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        UserContext.clear();
         try {
             String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
             if (StringUtils.hasText(authorization) && authorization.startsWith("Bearer ")) {
@@ -41,13 +48,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 } catch (RuntimeException ex) {
                     SecurityContextHolder.clearContext();
-                    UserContext.clear();
                 }
             }
             filterChain.doFilter(request, response);
         } finally {
-            SecurityContextHolder.clearContext();
-            UserContext.clear();
+            if (!request.isAsyncStarted() && request.getDispatcherType() != DispatcherType.ASYNC) {
+                SecurityContextHolder.clearContext();
+                UserContext.clear();
+            }
         }
     }
 }
