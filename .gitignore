@@ -53,3 +53,8 @@ __pycache__/
 # Database files
 *.sqlite
 *.db
+
+# Cursor / local agent skills (machine-specific, do not commit)
+.cursor/
+.agents/
+.agent/

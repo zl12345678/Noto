@@ -17,11 +17,23 @@
             :class="{ active: aiChat.sessionId === String(item.id) }"
             @click="openSession(item)"
           >
-            <span class="session-title">{{ item.title || '新对话' }}</span>
-            <span class="session-meta">
-              {{ item.scope === 'note' ? '单篇' : '知识库' }}
-              · {{ formatSessionTime(item.latestMessageAt || item.createdAt) }}
-            </span>
+            <div class="session-item-body">
+              <span class="session-title">{{ item.title || '新对话' }}</span>
+              <span class="session-meta">
+                {{ item.scope === 'note' ? '单篇' : '知识库' }}
+                · {{ formatSessionTime(item.latestMessageAt || item.createdAt) }}
+              </span>
+            </div>
+            <button
+              type="button"
+              class="session-delete-btn"
+              aria-label="删除会话"
+              title="删除"
+              :disabled="deletingSessionId === String(item.id)"
+              @click.stop="handleDeleteSession(item)"
+            >
+              ×
+            </button>
           </li>
         </ul>
         <div v-else class="session-empty">暂无历史会话</div>
@@ -69,13 +81,17 @@
         :default-workspace-id="aiChat.workspaceId"
       />
 
-      <a-spin :spinning="sessionLoading" wrapper-class-name="chat-log-spin">
-        <div ref="chatLogRef" class="chat-log" :key="chatLogKey">
-          <div v-if="aiChat.messages.length === 0 && !processing" class="chat-empty">
-          <p class="empty-title">说出你的需求，我来操控文档、待办、提醒、网盘与分享</p>
+      <div class="chat-log-wrap">
+        <div v-if="sessionLoading" class="chat-empty">
+          <a-spin size="small" />
+          <span class="loading-text">加载会话…</span>
         </div>
+        <div v-else ref="chatLogRef" :key="chatLogKey" class="chat-log">
+          <div v-if="aiChat.messages.length === 0 && !processing" class="chat-empty">
+            <p class="empty-title">说出你的需求，我来操控文档、待办、提醒、网盘与分享</p>
+          </div>
 
-        <div v-for="(item, index) in aiChat.messages" :key="messageKey(item, index)" class="chat-item" :class="item.role">
+          <div v-for="(item, index) in aiChat.messages" :key="messageKey(item, index)" class="chat-item" :class="item.role">
           <div class="bubble" :class="{ 'bubble-agent': item.kind === 'agent' }">
             <div class="bubble-head">
               <p class="bubble-role">{{ item.role === 'user' ? '我' : 'AI' }}</p>
@@ -88,11 +104,9 @@
 
             <AiMessageContent
               v-if="shouldShowAssistantContent(item)"
-              :key="messageKey(item, index)"
               class="bubble-content"
               :content="item.content"
               :agent-steps="item.kind === 'agent' ? item.agentTask?.steps : undefined"
-              :streaming="processing && index === aiChat.messages.length - 1 && item.kind === 'text'"
               :workspace-id="aiChat.workspaceId"
             />
 
@@ -135,7 +149,7 @@
           </div>
         </div>
         </div>
-      </a-spin>
+      </div>
 
       <footer class="chat-footer">
         <div v-if="aiChat.messages.length === 0" class="quick-chips">
@@ -185,7 +199,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onDeactivated, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import dayjs from 'dayjs';
 import { message, Modal } from 'ant-design-vue';
@@ -226,6 +240,8 @@ import { createNoteFromGap as createGapNote, sortReferencesByRelevance } from '.
 import { isReadOnlyListTask } from '../../utils/aiMessageFormat';
 import { QUICK_INSTRUCTIONS } from '../../utils/agentStepPresentation';
 
+defineOptions({ name: 'AiView' });
+
 const route = useRoute();
 const router = useRouter();
 const aiChat = useAiChatStore();
@@ -236,6 +252,7 @@ const workspaces = ref<Workspace[]>([]);
 const sessions = ref<AiChatSession[]>([]);
 const agentTasks = ref<AiAgentTask[]>([]);
 const loadingSessions = ref(false);
+const deletingSessionId = ref<string | null>(null);
 const sessionLoading = ref(false);
 const processing = ref(false);
 const processingHint = ref('思考中…');
@@ -611,6 +628,35 @@ const updateAgentTask = (index: number, task: AiAgentTask) => {
   void loadAgentTasks();
 };
 
+const handleDeleteSession = (session: AiChatSession) => {
+  const sid = String(session.id);
+  const title = session.title?.trim() || '新对话';
+  Modal.confirm({
+    title: '删除会话？',
+    content: `将删除「${title}」及全部消息，此操作不可恢复。`,
+    okText: '删除',
+    okType: 'danger',
+    cancelText: '取消',
+    onOk: async () => {
+      deletingSessionId.value = sid;
+      try {
+        await deleteAiChatSession(sid);
+        if (aiChat.sessionId === sid) {
+          invalidateActiveStream();
+          aiChat.clearSession();
+          questionInput.value = '';
+        }
+        await loadSessions();
+        message.success('已删除会话');
+      } catch (error: any) {
+        message.error(error?.message || '删除会话失败');
+      } finally {
+        deletingSessionId.value = null;
+      }
+    },
+  });
+};
+
 const handleClearChat = () => {
   Modal.confirm({
     title: '清空对话？',
@@ -628,6 +674,7 @@ const handleClearChat = () => {
           return;
         }
       }
+      invalidateActiveStream();
       aiChat.clearSession();
       questionInput.value = '';
     },
@@ -667,6 +714,10 @@ const createNoteFromGap = (gap: string) => {
   }
   void createGapNote(gap, aiChat.workspaceId, router);
 };
+
+onDeactivated(() => {
+  invalidateActiveStream();
+});
 
 onMounted(async () => {
   workspaces.value = await listWorkspaces();
@@ -778,12 +829,54 @@ onMounted(async () => {
 }
 
 .session-item {
-  padding: 10px 8px 10px 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px 10px 10px;
   cursor: pointer;
   border-left: 2px solid transparent;
   transition:
     background-color 0.2s var(--noto-ease-premium),
     border-color 0.2s var(--noto-ease-premium);
+}
+
+.session-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-delete-btn {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--noto-text-muted, #64748b);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.15s var(--noto-ease-premium),
+    background-color 0.15s var(--noto-ease-premium),
+    color 0.15s var(--noto-ease-premium);
+}
+
+.session-item:hover .session-delete-btn,
+.session-item:focus-within .session-delete-btn {
+  opacity: 1;
+}
+
+.session-delete-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+.session-delete-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .session-item + .session-item {
@@ -841,18 +934,12 @@ onMounted(async () => {
   overflow: hidden;
 }
 
-:deep(.chat-log-spin) {
+.chat-log-wrap {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-}
-
-:deep(.chat-log-spin .ant-spin-container) {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
+  overflow: hidden;
 }
 
 .chat-topbar {
@@ -913,6 +1000,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   min-height: 120px;
 }
 

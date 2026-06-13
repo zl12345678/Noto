@@ -215,7 +215,7 @@
           :class="{ 'noto-page-shell--fluid': isNotesRoute || isAiRoute }"
         >
           <router-view v-slot="{ Component }">
-            <keep-alive :max="10">
+            <keep-alive :max="10" :exclude="['AiView']">
               <component
                 :is="Component"
                 v-if="Component"
