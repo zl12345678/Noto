@@ -44,9 +44,9 @@
             </template>
 
             <template v-else-if="stage.key === 'notes'">
-              <ul v-if="recentNotes.length" class="mini-list">
+              <ul v-if="recentNotes.length" class="mini-list mini-list--scrollable">
                 <li
-                  v-for="note in recentNotes.slice(0, maxItems)"
+                  v-for="note in recentNotes"
                   :key="note.id"
                   class="mini-item clickable draggable-item"
                   :class="{ 'is-dragging': isDraggingNote(note.id) }"
@@ -64,9 +64,9 @@
             </template>
 
             <template v-else>
-              <ul v-if="stage.todos.length" class="mini-list">
+              <ul v-if="stage.todos.length" class="mini-list mini-list--scrollable">
                 <li
-                  v-for="item in stage.todos.slice(0, maxItems)"
+                  v-for="item in stage.todos"
                   :key="item.id"
                   class="mini-item todo-item draggable-item"
                   :class="{ 'is-dragging': isDraggingTodo(item.id) }"
@@ -100,6 +100,14 @@
                 </li>
               </ul>
               <p v-else class="stage-hint">{{ stage.emptyHint }}</p>
+              <button
+                v-if="stage.todos.length >= listCapHint"
+                type="button"
+                class="stage-more"
+                @click.stop="emit('go-board')"
+              >
+                查看全部待办 →
+              </button>
               <a v-if="stage.cta === '去写文档'" class="stage-cta" @click.stop="emit('go-notes')">去写文档 →</a>
               <a v-else-if="stage.cta === '加入队列'" class="stage-cta" @click.stop="emit('go-board')">加入队列 →</a>
             </template>
@@ -153,7 +161,8 @@ const props = withDefaults(
     recentNotes?: Note[];
     todayCompleted?: number;
     loading?: boolean;
-    maxItems?: number;
+    /** 待办列达到该数量时提示「查看全部」（与后端看板上限对齐） */
+    listCapHint?: number;
   }>(),
   {
     variant: 'default',
@@ -163,7 +172,7 @@ const props = withDefaults(
     recentNotes: () => [],
     todayCompleted: 0,
     loading: false,
-    maxItems: 3,
+    listCapHint: 12,
   },
 );
 
@@ -503,6 +512,12 @@ const stages = computed(() => [
   gap: 6px;
 }
 
+.mini-list--scrollable {
+  max-height: min(320px, 42vh);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
 .mini-item {
   padding: 8px 10px;
   border-radius: 8px;
@@ -599,6 +614,23 @@ const stages = computed(() => [
   color: var(--stage-accent, #1677ff);
   text-align: center;
   cursor: pointer;
+}
+
+.stage-more {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 4px 0;
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  color: var(--stage-accent, #1677ff);
+  text-align: center;
+  cursor: pointer;
+}
+
+.stage-more:hover {
+  text-decoration: underline;
 }
 
 .stage-cta:hover {

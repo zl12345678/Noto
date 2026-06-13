@@ -29,7 +29,7 @@
       </a-form-item>
 
       <a-form-item label="提醒内容">
-        <a-textarea v-model:value="message" :rows="2" placeholder="可选，默认使用待办标题" />
+        <a-textarea v-model:value="reminderMessage" :rows="2" placeholder="可选，默认使用待办标题" />
       </a-form-item>
     </a-form>
   </a-modal>
@@ -59,7 +59,7 @@ const emit = defineEmits<{
 
 const saving = ref(false);
 const triggerAt = ref<Dayjs | null>(null);
-const message = ref('');
+const reminderMessage = ref('');
 
 const canBeforeDue = computed(() => {
   if (!props.todo?.dueAt) return false;
@@ -71,7 +71,7 @@ watch(
   ([open]) => {
     if (!open || !props.todo) return;
     triggerAt.value = suggestReminderTriggerAt(props.todo);
-    message.value = `待办提醒：${props.todo.title}`;
+    reminderMessage.value = `待办提醒：${props.todo.title}`;
   },
 );
 
@@ -96,7 +96,7 @@ const handleSubmit = async () => {
       workspaceId: props.todo.workspaceId,
       todoId: props.todo.id,
       triggerAt: triggerAt.value.format('YYYY-MM-DDTHH:mm:ss'),
-      message: message.value.trim() || undefined,
+      message: reminderMessage.value.trim() || undefined,
       reminderType: 'once',
     });
     message.success('提醒已创建');

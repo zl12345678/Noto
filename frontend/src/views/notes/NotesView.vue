@@ -1693,6 +1693,7 @@ const handleFolderModalOk = async () => {
       message.success('分组已重命名');
     }
     await loadFolders();
+    folderModalOpen.value = false;
   } catch (error: any) {
     message.error(error?.message || '操作失败');
     return Promise.reject();

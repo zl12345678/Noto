@@ -158,7 +158,7 @@
         <h3>最近文档</h3>
         <a-button type="link" @click="goNotes('recent')">全部</a-button>
       </div>
-      <a-list v-if="stats?.recentNotes?.length" :data-source="stats.recentNotes.slice(0, 4)" item-layout="horizontal">
+      <a-list v-if="stats?.recentNotes?.length" :data-source="stats.recentNotes" item-layout="horizontal">
         <template #renderItem="{ item }">
           <a-list-item class="recent-item" @click="openNote(item.id)">
             <a-list-item-meta :title="item.title" :description="item.summary || item.excerpt || '暂无摘要'" />
@@ -333,7 +333,7 @@ const urgentTodos = computed(() => {
       if (isTodoOverdue(item)) return true;
       return item.dueAt && dayjs(item.dueAt).isSame(dayjs(), 'day');
     })
-    .slice(0, 6);
+    .slice(0, 12);
 });
 
 const extractReview = reactive({
