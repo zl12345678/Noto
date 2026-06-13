@@ -3,14 +3,15 @@
 # 前提：后端已启动（默认 http://localhost:9086，profile=dev 启用 springdoc）
 
 param(
-    [string]$BaseUrl = "http://localhost:9086",
-    [string]$OutFile = ""
+    [string]$BaseUrl = 'http://localhost:9086',
+    [string]$OutFile = ''
 )
 
-$ErrorActionPreference = "Stop"
-$root = Split-Path $PSScriptRoot -Parent
+$ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'lib\Noto-Docker.ps1')
+
 if (-not $OutFile) {
-    $OutFile = Join-Path $root "docs\openapi.yaml"
+    $OutFile = Join-Path $script:NotoRoot 'docs\openapi.yaml'
 }
 
 $url = "$BaseUrl/v3/api-docs.yaml"
@@ -19,8 +20,9 @@ Write-Host "Fetching $url ..." -ForegroundColor Cyan
 try {
     Invoke-WebRequest -Uri $url -UseBasicParsing -OutFile $OutFile
 } catch {
-    Write-Host "Failed. Ensure backend is running with dev profile (springdoc enabled)." -ForegroundColor Yellow
-    Write-Host "  cd backend; .\mvnw.cmd spring-boot:run" -ForegroundColor Gray
+    Write-Host 'Failed. Ensure backend is running with dev profile (springdoc enabled).' -ForegroundColor Yellow
+    Write-Host '  cd backend; .\dev.ps1 -WatchCompile' -ForegroundColor Gray
+    Write-Host '  or VS Code task: backend: dev' -ForegroundColor Gray
     throw
 }
 

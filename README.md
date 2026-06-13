@@ -209,7 +209,7 @@ Docker 环境默认启用 MinIO（`NOTO_MINIO_ENABLED=true`），笔记编辑器
 
 本地 IDE 开发若需预置数据：`$env:NOTO_DEMO_ENABLED="true"` 后启动后端（需已有 admin 账号）。
 
-**端口冲突**：若 9086 已被本地后端占用，运行 `.\scripts\demo-up.ps1` 会自动停止本地进程；保留本地后端时用 `.\scripts\demo-up.ps1 -KeepLocalBackend`（仅启 db/minio）。
+**端口冲突**：若 9086 已被本地后端占用，运行 `.\scripts\demo-up.ps1` 会自动停止本地进程；保留本地后端时用 `.\scripts\demo-up.ps1 -InfraOnly` 或 `.\scripts\dev-up.ps1`（仅启 db/minio）。
 
 ### 本地开发启用 MinIO
 

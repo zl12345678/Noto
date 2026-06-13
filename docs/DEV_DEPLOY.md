@@ -64,7 +64,7 @@ Noto 采用前后端分离架构，依赖 PostgreSQL（pgvector）与 MinIO（�
 | 5432 | PostgreSQL | Docker |
 | 9000 / 9001 | MinIO API / 控制台 | Docker |
 
-> **注意**：若 9086 已被本地后端占用，运行 `demo-up.ps1` 会自动结束该进程；保留本地后端时用 `demo-up.ps1 -KeepLocalBackend`（只启 db/minio）。
+> **注意**：若 9086 已被本地后端占用，运行 `demo-up.ps1` 会自动结束该进程；保留本地后端时用 `demo-up.ps1 -InfraOnly` 或 `dev-up.ps1`（只启 db/minio）。
 
 ---
 
@@ -123,8 +123,10 @@ npm run dev
 | 脚本 | 作用 |
 |------|------|
 | **`scripts/dev-up.ps1`** | **推荐**：`docker compose up -d db minio`，校验 pgvector |
+| `scripts/dev-down.ps1` | 停止 db + minio（保留数据卷） |
 | `scripts/start-postgres.ps1` | 仅启动数据库（等价 `compose up -d db`） |
 | `scripts/start-minio.ps1` | 单独启动 MinIO（国内镜像拉取；与 compose 容器可能冲突，优先 dev-up） |
+| `scripts/stack-status.ps1` | 容器、端口、健康检查摘要 |
 
 `dev-up.ps1` 完成后会输出下一步提示与容器状态。
 
@@ -275,7 +277,7 @@ cd e:\Noto_知微
 
 脚本会依次：
 
-1. 若 9086 被占用且未指定 `-KeepLocalBackend`，结束本地后端进程
+1. 若 9086 被占用且未使用 `-InfraOnly`，结束本地后端进程
 2. 启动 / 修复 `noto-db`、`noto-minio`
 3. `docker compose up -d --build backend frontend`
 4. 等待健康检查，检查演示数据种子日志
@@ -317,12 +319,16 @@ MINIO_ROOT_PASSWORD=强密码
 
 ```powershell
 cd e:\Noto_知微
-copy .env.example .env
+copy deploy\env.prod.example .env
 # 编辑 .env 完成上述修改
 
-docker compose up -d --build
-docker compose ps
-docker compose logs -f backend
+# 推荐：预检 + 生产 compose（合并 deploy/docker-compose.prod.yml）
+.\scripts\prod-check.ps1 -Strict
+.\scripts\prod-up.ps1
+
+# 云服务器 Linux：
+#   ./deploy/prod-check.sh --strict && ./deploy/prod-up.sh
+# 详见 deploy/README.md
 ```
 
 **生产 profile 行为**（`application-prod.yml` + compose 环境变量）：
@@ -538,11 +544,23 @@ Caddy 自动申请/续期证书；SSE 与上传需在 Caddyfile 中增加 `flush
 
 | 路径 | 说明 |
 |------|------|
+| [`scripts/README.md`](../scripts/README.md) | **脚本总索引**（推荐先看） |
 | `scripts/dev-up.ps1` | 本地开发：db + minio |
+| `scripts/dev-down.ps1` | 停止 db + minio（保留卷） |
 | `scripts/demo-up.ps1` | 全栈演示：db + minio + backend + frontend |
-| `scripts/demo-up.ps1 -KeepLocalBackend` | 全栈但保留本地 9086 后端（仅启 db/minio 时与 dev-up 类似） |
+| `scripts/demo-up.ps1 -InfraOnly` | 仅 db + minio，配合 IDE 本地后端 |
+| `scripts/demo-down.ps1` | 停止全栈（`docker compose down`） |
 | `scripts/start-postgres.ps1` | 仅 PostgreSQL |
 | `scripts/start-minio.ps1` | 仅 MinIO（国内镜像） |
+| `scripts/reset-demo-seed.ps1` | 清除演示种子标记，重启 backend 后重写入 |
+| `scripts/export-openapi.ps1` | 导出 `docs/openapi.yaml` |
+| `scripts/stack-status.ps1` | 容器与端口状态 |
+| `scripts/prod-check.ps1` | 生产 `.env` 预检（Windows） |
+| `scripts/prod-up.ps1` | 生产 compose 启动（Windows 预演） |
+| `scripts/prod-down.ps1` | 停止生产栈 |
+| `scripts/prod-update.ps1` | 拉代码并重建 |
+| `scripts/prod-backup.ps1` | 数据库备份 |
+| [`deploy/README.md`](../deploy/README.md) | **云服务器生产脚本**（`prod-*.sh`、Nginx、HTTPS） |
 
 ### 7.2 Compose 服务
 
@@ -576,7 +594,7 @@ $env:JAVA_HOME = "C:\Program Files\Java\jdk-17"
 ### Q1：`demo-up.ps1` 与本地后端端口冲突
 
 - 现象：9086 已被占用  
-- 处理：关闭 IDE 后端，或 `demo-up.ps1 -KeepLocalBackend` + 只用 Docker 的 db/minio
+- 处理：关闭 IDE 后端，或 `demo-up.ps1 -InfraOnly` / `dev-up.ps1`（只用 Docker 的 db/minio）
 
 ### Q2：RAG 未使用 pgvector
 

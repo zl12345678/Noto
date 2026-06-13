@@ -1,28 +1,29 @@
 # Noto 本地 MinIO（Docker 单容器，国内镜像源）
+# 注意：与 docker compose 的 noto-minio 可能冲突，优先使用 .\scripts\dev-up.ps1
 # 用法：.\scripts\start-minio.ps1
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'lib\Noto-Docker.ps1')
 
-$containerName = "noto-minio"
-$imageTag = "RELEASE.2024-12-18T13-15-44Z"
+$containerName = 'noto-minio'
+$imageTag = 'RELEASE.2024-12-18T13-15-44Z'
 $localImage = "minio/minio:$imageTag"
-$apiPort = if ($env:MINIO_API_PORT) { $env:MINIO_API_PORT } else { "9000" }
-$consolePort = if ($env:MINIO_CONSOLE_PORT) { $env:MINIO_CONSOLE_PORT } else { "9001" }
-$user = if ($env:MINIO_ROOT_USER) { $env:MINIO_ROOT_USER } else { "minioadmin" }
-$password = if ($env:MINIO_ROOT_PASSWORD) { $env:MINIO_ROOT_PASSWORD } else { "minioadmin" }
+$apiPort = if ($env:MINIO_API_PORT) { $env:MINIO_API_PORT } else { Read-NotoEnvValue -Key 'MINIO_API_PORT' -Default '9000' }
+$consolePort = if ($env:MINIO_CONSOLE_PORT) { $env:MINIO_CONSOLE_PORT } else { Read-NotoEnvValue -Key 'MINIO_CONSOLE_PORT' -Default '9001' }
+$user = if ($env:MINIO_ROOT_USER) { $env:MINIO_ROOT_USER } else { Read-NotoEnvValue -Key 'MINIO_ROOT_USER' -Default 'minioadmin' }
+$password = if ($env:MINIO_ROOT_PASSWORD) { $env:MINIO_ROOT_PASSWORD } else { Read-NotoEnvValue -Key 'MINIO_ROOT_PASSWORD' -Default 'minioadmin' }
 
-# 国内镜像前缀（按推荐顺序尝试）
 $mirrors = @(
-    "docker.m.daocloud.io",
-    "docker.1panel.live",
-    "docker.imgdb.de",
-    "docker.hlmirror.com",
-    "docker.1ms.run",
-    "docker.xuanyuan.me"
+    'docker.m.daocloud.io',
+    'docker.1panel.live',
+    'docker.imgdb.de',
+    'docker.hlmirror.com',
+    'docker.1ms.run',
+    'docker.xuanyuan.me'
 )
 
 function Test-LocalImage {
-    $found = docker images $localImage --format "{{.Repository}}:{{.Tag}}" 2>$null
+    $found = docker images $localImage --format '{{.Repository}}:{{.Tag}}' 2>$null
     return [bool]$found
 }
 
@@ -34,7 +35,7 @@ function Pull-MinioImage {
 
     foreach ($mirror in $mirrors) {
         $remote = "${mirror}/minio/minio:${imageTag}"
-        Write-Host ""
+        Write-Host ''
         Write-Host "Trying mirror: $remote" -ForegroundColor Cyan
         try {
             docker pull $remote
@@ -59,12 +60,19 @@ Or set Docker Engine registry-mirrors to:
 "@
 }
 
-Write-Host "Checking Docker..."
+Write-Host 'Checking Docker...'
 docker version | Out-Null
 
-$existing = docker ps -a --filter "name=^${containerName}$" --format "{{.Names}}"
+$composeRunning = docker ps --filter 'name=^noto-minio$' --format '{{.Names}}' 2>$null
+if ($composeRunning -eq 'noto-minio') {
+    Write-Host 'noto-minio is already running via docker compose.' -ForegroundColor Green
+    Show-NotoContainers
+    exit 0
+}
+
+$existing = docker ps -a --filter "name=^${containerName}$" --format '{{.Names}}'
 if ($existing -eq $containerName) {
-    $running = docker ps --filter "name=^${containerName}$" --format "{{.Names}}"
+    $running = docker ps --filter "name=^${containerName}$" --format '{{.Names}}'
     if ($running -eq $containerName) {
         Write-Host "MinIO already running: http://localhost:${consolePort} (user: $user)"
         exit 0
@@ -83,14 +91,14 @@ if ($existing -eq $containerName) {
         -e "MINIO_ROOT_PASSWORD=$password" `
         -v noto_minio_data:/data `
         $localImage `
-        server /data --console-address ":9001"
+        server /data --console-address ':9001'
 }
 
 Start-Sleep -Seconds 2
-docker ps --filter "name=$containerName" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-Write-Host ""
+docker ps --filter "name=$containerName" --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+Write-Host ''
 Write-Host "MinIO API:      http://localhost:$apiPort"
 Write-Host "MinIO Console:  http://localhost:$consolePort"
 Write-Host "Login:          $user / $password"
-Write-Host ""
+Write-Host ''
 Write-Host "Backend config (application-dev.yml): noto.minio.enabled=true, endpoint=http://localhost:$apiPort"

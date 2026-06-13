@@ -36,6 +36,9 @@ Thumbs.db
 *.p12
 *.jks
 
+# Database backups (prod-backup scripts)
+backups/
+
 # Temporary files
 *.tmp
 *.swp
