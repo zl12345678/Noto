@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 
 public interface AttachmentService {
 
@@ -57,7 +58,23 @@ public interface AttachmentService {
             Long userId
     );
 
-    Path buildBatchDownloadZipFile(List<NoteAttachmentEntity> entities) throws IOException;
+    /** 批量下载打包上下文（用于 ZIP 内保留文件夹结构） */
+    record BatchDownloadZipContext(
+            Long workspaceId,
+            List<Long> selectedFolderIds,
+            boolean uncategorizedIncluded,
+            boolean unlinkedOnlyIncluded,
+            Set<Long> explicitAttachmentIds
+    ) {}
 
-    void writeBatchDownloadZip(List<NoteAttachmentEntity> entities, OutputStream outputStream) throws IOException;
+    Path buildBatchDownloadZipFile(
+            List<NoteAttachmentEntity> entities,
+            BatchDownloadZipContext context
+    ) throws IOException;
+
+    void writeBatchDownloadZip(
+            List<NoteAttachmentEntity> entities,
+            BatchDownloadZipContext context,
+            OutputStream outputStream
+    ) throws IOException;
 }

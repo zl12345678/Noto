@@ -114,7 +114,14 @@ public class DriveController {
                 userId
         );
 
-        Path zipFile = attachmentService.buildBatchDownloadZipFile(entities);
+        AttachmentService.BatchDownloadZipContext zipContext = new AttachmentService.BatchDownloadZipContext(
+                request.getWorkspaceId(),
+                folderIds,
+                Boolean.TRUE.equals(request.getUncategorized()),
+                Boolean.TRUE.equals(request.getUnlinkedOnly()),
+                new java.util.HashSet<>(attachmentIds)
+        );
+        Path zipFile = attachmentService.buildBatchDownloadZipFile(entities, zipContext);
         String filename = "noto-drive-" + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE) + ".zip";
         String ticket = batchDownloadTicketService.create(zipFile, filename, userId);
 

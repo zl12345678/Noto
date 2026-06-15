@@ -463,11 +463,18 @@ public class AttachmentServiceImpl implements AttachmentService {
         return scoped;
     }
 
+    private static final String ZIP_DIR_UNCATEGORIZED = "未分类";
+    private static final String ZIP_DIR_UNLINKED = "未关联文档";
+    private static final String ZIP_DIR_LOOSE = "文件";
+
     @Override
-    public Path buildBatchDownloadZipFile(List<NoteAttachmentEntity> entities) throws IOException {
+    public Path buildBatchDownloadZipFile(
+            List<NoteAttachmentEntity> entities,
+            BatchDownloadZipContext context
+    ) throws IOException {
         Path tempFile = Files.createTempFile("noto-drive-", ".zip");
         try (OutputStream outputStream = Files.newOutputStream(tempFile)) {
-            writeBatchDownloadZip(entities, outputStream);
+            writeBatchDownloadZip(entities, context, outputStream);
             return tempFile;
         } catch (RuntimeException | IOException ex) {
             Files.deleteIfExists(tempFile);
@@ -476,11 +483,40 @@ public class AttachmentServiceImpl implements AttachmentService {
     }
 
     @Override
-    public void writeBatchDownloadZip(List<NoteAttachmentEntity> entities, OutputStream outputStream) throws IOException {
+    public void writeBatchDownloadZip(
+            List<NoteAttachmentEntity> entities,
+            BatchDownloadZipContext context,
+            OutputStream outputStream
+    ) throws IOException {
+        Map<Long, DriveFolderEntity> folderById = loadWorkspaceFoldersForZip(context);
+        Set<Long> selectedFolderIds = context != null && context.selectedFolderIds() != null
+                ? new HashSet<>(context.selectedFolderIds())
+                : Set.of();
+        Set<Long> explicitIds = context != null && context.explicitAttachmentIds() != null
+                ? context.explicitAttachmentIds()
+                : Set.of();
+        boolean uncategorizedIncluded = context != null && context.uncategorizedIncluded();
+        boolean unlinkedOnlyIncluded = context != null && context.unlinkedOnlyIncluded();
+
         Set<String> usedNames = new HashSet<>();
         try (ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream)) {
+            if (context != null && context.workspaceId() != null && !selectedFolderIds.isEmpty()) {
+                writeSelectedFolderDirectoryEntries(zipOutputStream, context.workspaceId(), selectedFolderIds, folderById, usedNames);
+            }
             for (NoteAttachmentEntity entity : entities) {
-                String entryName = uniqueZipEntryName(entity.getFileName(), usedNames);
+                String relativeDir = resolveZipDirectoryForEntity(
+                        entity,
+                        folderById,
+                        selectedFolderIds,
+                        explicitIds,
+                        uncategorizedIncluded,
+                        unlinkedOnlyIncluded
+                );
+                String fileName = sanitizeFileName(entity.getFileName());
+                String entryPath = StringUtils.hasText(relativeDir)
+                        ? relativeDir + "/" + fileName
+                        : fileName;
+                String entryName = uniqueZipEntryName(entryPath, usedNames);
                 zipOutputStream.putNextEntry(new ZipEntry(entryName));
                 try (InputStream inputStream = objectStorageService.download(entity.getStorageKey())) {
                     inputStream.transferTo(zipOutputStream);
@@ -491,8 +527,238 @@ public class AttachmentServiceImpl implements AttachmentService {
         }
     }
 
+    /** 为选中文件夹及其子目录写入空目录项（便于解压后看到完整层级） */
+    private void writeSelectedFolderDirectoryEntries(
+            ZipOutputStream zipOutputStream,
+            Long workspaceId,
+            Set<Long> selectedFolderIds,
+            Map<Long, DriveFolderEntity> folderById,
+            Set<String> usedNames
+    ) throws IOException {
+        for (Long selectedRootId : selectedFolderIds) {
+            if (selectedRootId == null || !folderById.containsKey(selectedRootId)) {
+                continue;
+            }
+            Set<Long> subtree = collectFolderScopeIds(List.of(selectedRootId), workspaceId);
+            for (Long folderId : subtree) {
+                String dirPath = zipPathRelativeToSelectedFolder(selectedRootId, folderId, folderById);
+                if (!StringUtils.hasText(dirPath)) {
+                    continue;
+                }
+                String entryName = uniqueZipEntryName(dirPath + "/", usedNames);
+                zipOutputStream.putNextEntry(new ZipEntry(entryName));
+                zipOutputStream.closeEntry();
+            }
+        }
+    }
+
+    private Map<Long, DriveFolderEntity> loadWorkspaceFoldersForZip(BatchDownloadZipContext context) {
+        if (context == null || context.workspaceId() == null) {
+            return Map.of();
+        }
+        return driveFolderService.lambdaQuery()
+                .eq(DriveFolderEntity::getWorkspaceId, context.workspaceId())
+                .list()
+                .stream()
+                .collect(Collectors.toMap(DriveFolderEntity::getId, f -> f, (a, b) -> a));
+    }
+
+    private String resolveZipDirectoryForEntity(
+            NoteAttachmentEntity entity,
+            Map<Long, DriveFolderEntity> folderById,
+            Set<Long> selectedFolderIds,
+            Set<Long> explicitIds,
+            boolean uncategorizedIncluded,
+            boolean unlinkedOnlyIncluded
+    ) {
+        Long folderId = entity.getFolderId();
+        if (folderId != null && folderById.containsKey(folderId)) {
+            if (!selectedFolderIds.isEmpty()) {
+                Long anchor = findDeepestSelectedAncestor(folderId, selectedFolderIds, folderById);
+                if (anchor != null) {
+                    return zipPathFromFolderAnchor(anchor, folderId, folderById);
+                }
+            }
+            String full = folderPathFromRoot(folderId, folderById);
+            if (StringUtils.hasText(full)) {
+                return full;
+            }
+        }
+        if (folderId == null) {
+            if (uncategorizedIncluded) {
+                return ZIP_DIR_UNCATEGORIZED;
+            }
+            if (unlinkedOnlyIncluded && explicitIds.contains(entity.getId())) {
+                return ZIP_DIR_UNLINKED;
+            }
+        }
+        if (explicitIds.contains(entity.getId()) && folderId == null) {
+            return ZIP_DIR_LOOSE;
+        }
+        return "";
+    }
+
+    private Long findDeepestSelectedAncestor(
+            Long fileFolderId,
+            Set<Long> selectedFolderIds,
+            Map<Long, DriveFolderEntity> folderById
+    ) {
+        Long best = null;
+        int bestDepth = -1;
+        for (Long selectedId : selectedFolderIds) {
+            if (!isFolderAncestorOrSelf(selectedId, fileFolderId, folderById)) {
+                continue;
+            }
+            int depth = folderDepth(selectedId, folderById);
+            if (depth > bestDepth) {
+                bestDepth = depth;
+                best = selectedId;
+            }
+        }
+        return best;
+    }
+
+    private boolean isFolderAncestorOrSelf(
+            Long ancestorId,
+            Long folderId,
+            Map<Long, DriveFolderEntity> folderById
+    ) {
+        Long current = folderId;
+        while (current != null) {
+            if (current.equals(ancestorId)) {
+                return true;
+            }
+            DriveFolderEntity folder = folderById.get(current);
+            if (folder == null) {
+                break;
+            }
+            current = folder.getParentId();
+        }
+        return false;
+    }
+
+    private int folderDepth(Long folderId, Map<Long, DriveFolderEntity> folderById) {
+        int depth = 0;
+        Long current = folderId;
+        while (current != null) {
+            depth++;
+            DriveFolderEntity folder = folderById.get(current);
+            if (folder == null) {
+                break;
+            }
+            current = folder.getParentId();
+        }
+        return depth;
+    }
+
+    /**
+     * 勾选文件夹批量下载时：ZIP 内以所选文件夹名为根（如 111/子目录/文件），
+     * 而不是从知识库根开始的完整路径。
+     */
+    private String zipPathRelativeToSelectedFolder(
+            Long selectedRootId,
+            Long targetFolderId,
+            Map<Long, DriveFolderEntity> folderById
+    ) {
+        if (selectedRootId == null || targetFolderId == null) {
+            return "";
+        }
+        if (!isFolderAncestorOrSelf(selectedRootId, targetFolderId, folderById)) {
+            return "";
+        }
+        DriveFolderEntity root = folderById.get(selectedRootId);
+        if (root == null) {
+            return "";
+        }
+        String rootName = sanitizeZipPathSegment(root.getName());
+        if (Objects.equals(selectedRootId, targetFolderId)) {
+            return rootName;
+        }
+        String full = folderPathFromRoot(targetFolderId, folderById);
+        String anchorFull = folderPathFromRoot(selectedRootId, folderById);
+        if (!StringUtils.hasText(full) || !StringUtils.hasText(anchorFull)) {
+            return rootName;
+        }
+        if (!full.equals(anchorFull) && !full.startsWith(anchorFull + "/")) {
+            return rootName;
+        }
+        String suffix = full.equals(anchorFull) ? "" : full.substring(anchorFull.length() + 1);
+        return StringUtils.hasText(suffix) ? rootName + "/" + suffix : rootName;
+    }
+
+    private String zipPathFromFolderAnchor(
+            Long anchorFolderId,
+            Long fileFolderId,
+            Map<Long, DriveFolderEntity> folderById
+    ) {
+        return zipPathRelativeToSelectedFolder(anchorFolderId, fileFolderId, folderById);
+    }
+
+    private String folderPathFromRoot(Long folderId, Map<Long, DriveFolderEntity> folderById) {
+        List<String> segments = new ArrayList<>();
+        Long current = folderId;
+        while (current != null) {
+            DriveFolderEntity folder = folderById.get(current);
+            if (folder == null) {
+                break;
+            }
+            segments.add(sanitizeZipPathSegment(folder.getName()));
+            current = folder.getParentId();
+        }
+        if (segments.isEmpty()) {
+            return "";
+        }
+        java.util.Collections.reverse(segments);
+        return String.join("/", segments);
+    }
+
+    private String sanitizeZipPathSegment(String raw) {
+        if (!StringUtils.hasText(raw)) {
+            return "folder";
+        }
+        String trimmed = raw.trim().replace('\\', '_').replace('/', '_');
+        trimmed = trimmed.replaceAll("[\\x00-\\x1f]", "");
+        if (trimmed.isEmpty() || ".".equals(trimmed) || "..".equals(trimmed)) {
+            return "folder";
+        }
+        return trimmed;
+    }
+
+    /** 保留 ZIP 内路径层级；不可对整段路径使用 {@link #sanitizeFileName}（会截掉目录前缀） */
+    private String sanitizeZipEntryPath(String rawPath) {
+        if (!StringUtils.hasText(rawPath)) {
+            return "file.bin";
+        }
+        boolean trailingSlash = rawPath.endsWith("/");
+        String normalized = rawPath.replace('\\', '/').replaceAll("/+", "/");
+        while (normalized.startsWith("/")) {
+            normalized = normalized.substring(1);
+        }
+        while (normalized.endsWith("/") && normalized.length() > 0) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        if (!StringUtils.hasText(normalized)) {
+            return trailingSlash ? "folder/" : "file.bin";
+        }
+        String[] parts = normalized.split("/");
+        List<String> segments = new ArrayList<>();
+        for (int i = 0; i < parts.length; i++) {
+            String part = parts[i];
+            if (!StringUtils.hasText(part)) {
+                continue;
+            }
+            boolean isLastFile = i == parts.length - 1 && !trailingSlash;
+            segments.add(isLastFile ? sanitizeFileName(part) : sanitizeZipPathSegment(part));
+        }
+        if (segments.isEmpty()) {
+            return trailingSlash ? "folder/" : "file.bin";
+        }
+        String joined = String.join("/", segments);
+        return trailingSlash ? joined + "/" : joined;
+    }
+
     private String uniqueZipEntryName(String rawName, Set<String> usedNames) {
-        String baseName = sanitizeFileName(rawName);
+        String baseName = sanitizeZipEntryPath(rawName);
         if (!usedNames.contains(baseName)) {
             usedNames.add(baseName);
             return baseName;
