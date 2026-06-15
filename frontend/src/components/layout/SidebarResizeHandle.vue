@@ -115,19 +115,24 @@ function onClick(event: MouseEvent) {
   height: 100%;
   flex-shrink: 0;
   z-index: 2;
-  border-right: 1px solid #eef2f7;
-  background: #fbfcfe;
+  border-right: 1px solid var(--noto-resize-rail-border);
+  background: var(--noto-resize-rail-bg);
 }
 
 .sidebar-resize-handle.collapsed.inline {
   width: 16px;
-  background: #f8fafc;
-  box-shadow: 2px 0 8px rgba(15, 23, 42, 0.04);
+  background: var(--noto-resize-rail-collapsed-bg);
+  box-shadow: var(--noto-shadow-soft);
 }
 
 .sidebar-resize-handle:hover,
 .sidebar-resize-handle.dragging {
-  background: rgba(22, 119, 255, 0.06);
+  background: var(--noto-resize-hover-bg);
+}
+
+.sidebar-resize-handle.inline:hover,
+.sidebar-resize-handle.inline.dragging {
+  background: var(--noto-resize-hover-bg);
 }
 
 .handle-line {
@@ -137,13 +142,13 @@ function onClick(event: MouseEvent) {
   left: 50%;
   width: 1px;
   transform: translateX(-50%);
-  background: #e5e7eb;
+  background: var(--noto-resize-line);
   pointer-events: none;
 }
 
 .sidebar-resize-handle:hover .handle-line,
 .sidebar-resize-handle.dragging .handle-line {
-  background: #1677ff;
+  background: var(--noto-resize-active-line);
   width: 2px;
 }
 
@@ -156,16 +161,16 @@ function onClick(event: MouseEvent) {
   width: 16px;
   height: 28px;
   border-radius: 8px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  color: #667085;
+  background: var(--noto-resize-arrow-bg);
+  border: 1px solid var(--noto-resize-arrow-border);
+  color: var(--noto-text-muted);
   font-size: 10px;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--noto-shadow-soft);
   pointer-events: none;
 }
 
 .sidebar-resize-handle:hover .handle-arrow {
-  color: #1677ff;
-  border-color: #bfdbfe;
+  color: var(--noto-accent-deep);
+  border-color: var(--noto-accent);
 }
 </style>

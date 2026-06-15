@@ -772,7 +772,7 @@ onMounted(async () => {
   min-height: 0;
   padding: 12px 12px 12px 16px;
   border-right: 1px solid var(--noto-border, #e2e8f0);
-  background: #fafbfc;
+  background: var(--noto-sidebar-muted-bg);
 }
 
 .sidebar-head {
@@ -880,16 +880,16 @@ onMounted(async () => {
 }
 
 .session-item + .session-item {
-  border-top: 1px solid rgba(15, 23, 42, 0.05);
+  border-top: 1px solid var(--noto-border-soft);
 }
 
 .session-item:hover {
-  background: rgba(8, 145, 178, 0.04);
+  background: var(--noto-hover-bg);
 }
 
 .session-item.active {
   border-left-color: var(--noto-accent-deep, #0e7490);
-  background: rgba(8, 145, 178, 0.07);
+  background: var(--noto-pastel-blue);
 }
 
 .session-title {
@@ -950,7 +950,7 @@ onMounted(async () => {
   flex-shrink: 0;
   padding: 10px 16px;
   border-bottom: 1px solid var(--noto-border, #e2e8f0);
-  background: #fff;
+  background: var(--noto-surface);
 }
 
 .chat-topbar-filters {
@@ -973,13 +973,13 @@ onMounted(async () => {
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 999px;
-  color: #64748b;
-  background: #f1f5f9;
+  color: var(--noto-text-muted);
+  background: var(--noto-status-pill-bg);
 }
 
 .status-pill--on {
-  color: #047857;
-  background: #ecfdf5;
+  color: var(--noto-accent-deep);
+  background: var(--noto-pastel-green);
 }
 
 .chat-topbar-actions {
@@ -1014,7 +1014,7 @@ onMounted(async () => {
   flex-shrink: 0;
   padding: 0 16px 12px;
   border-top: 1px solid var(--noto-border, #e2e8f0);
-  background: #fff;
+  background: var(--noto-surface);
 }
 
 .quick-chips {
@@ -1029,7 +1029,7 @@ onMounted(async () => {
   padding: 4px 12px;
   border: 1px solid var(--noto-border, #e2e8f0);
   border-radius: 999px;
-  background: #f8fafc;
+  background: var(--noto-chip-bg);
   color: var(--noto-text-muted, #64748b);
   font-size: 12px;
   line-height: 1.5;
@@ -1079,7 +1079,7 @@ onMounted(async () => {
   max-width: min(85%, 720px);
   padding: 12px 14px;
   border-radius: 14px;
-  background: #f8fafc;
+  background: var(--noto-bubble-bg);
 }
 
 .bubble-agent {
@@ -1087,7 +1087,7 @@ onMounted(async () => {
 }
 
 .chat-item.user .bubble {
-  background: #e0f2fe;
+  background: var(--noto-bubble-user-bg);
 }
 
 .bubble-head {
@@ -1121,12 +1121,12 @@ onMounted(async () => {
   word-break: break-word;
   font-size: 14px;
   line-height: 1.7;
-  color: #101828;
+  color: var(--noto-text);
 }
 
 .bubble-content {
   line-height: 1.7;
-  color: #101828;
+  color: var(--noto-text);
 }
 
 .refs {
@@ -1200,7 +1200,7 @@ onMounted(async () => {
   gap: 8px;
   padding: 6px 0;
   font-size: 12px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--noto-border-soft);
 }
 
 @media (max-width: 960px) {

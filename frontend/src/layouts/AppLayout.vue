@@ -980,15 +980,10 @@ function handleMenuClick({ key }: { key: string }) {
   max-height: 48px !important;
   padding: 0 16px !important;
   line-height: 1;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--noto-header-bg);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--noto-border);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
-}
-
-:root[data-theme='dark'] .header {
-  background: rgba(26, 35, 50, 0.92);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+  box-shadow: var(--noto-header-shadow);
 }
 
 .header-compact {

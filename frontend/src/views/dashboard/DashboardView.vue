@@ -791,7 +791,7 @@ onMounted(() => {
   background:
     radial-gradient(circle at 88% 12%, rgba(8, 145, 178, 0.08), transparent 42%),
     radial-gradient(circle at 8% 88%, rgba(99, 102, 241, 0.06), transparent 38%),
-    linear-gradient(165deg, #ffffff 0%, #f8fafc 100%);
+    var(--noto-loop-card-bg);
   color: var(--noto-text);
   border: 1px solid var(--noto-border);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
@@ -898,7 +898,7 @@ onMounted(() => {
   padding: 8px 12px;
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--noto-doc-stat-bg);
   cursor: pointer;
   transition:
     transform 0.2s var(--noto-ease-premium),
@@ -916,8 +916,8 @@ onMounted(() => {
 }
 
 .doc-stat-pill--archived {
-  background: #f1f5f9;
-  border-color: rgba(100, 116, 139, 0.15);
+  background: var(--noto-status-pill-bg);
+  border-color: var(--noto-border-soft);
 }
 
 .doc-stat-num {
@@ -1012,15 +1012,15 @@ onMounted(() => {
 }
 
 .recent-item:hover {
-  background: #f8fafc;
+  background: var(--noto-hover-bg);
 }
 
 .daily-summary {
   margin: 0 0 16px;
   padding: 12px 14px;
   border-radius: 12px;
-  background: #f0f7ff;
-  color: #1d4ed8;
+  background: var(--noto-info-bg);
+  color: var(--noto-info-text);
   line-height: 1.6;
 }
 

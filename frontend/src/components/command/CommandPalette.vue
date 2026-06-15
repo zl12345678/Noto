@@ -373,7 +373,7 @@ const onOverlayKeydown = (event: KeyboardEvent) => {
   align-items: flex-start;
   justify-content: center;
   padding: 12vh 16px 16px;
-  background: rgba(15, 23, 42, 0.42);
+  background: var(--noto-backdrop);
   backdrop-filter: blur(4px);
 }
 

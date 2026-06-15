@@ -116,8 +116,9 @@ const handleSubmit = async () => {
   margin: 0 0 12px;
   padding: 8px 10px;
   border-radius: 8px;
-  background: #f8fafc;
-  color: #334155;
+  background: var(--noto-hint-bar-bg);
+  color: var(--noto-text);
   font-size: 13px;
+  border: 1px solid var(--noto-border-soft);
 }
 </style>

@@ -97,8 +97,8 @@ const formatMeta = (item: TodoItem) => {
   gap: 10px;
   padding: 10px 12px;
   border-radius: 12px;
-  background: #f8fafc;
-  border: 1px solid #eef2f7;
+  background: var(--noto-list-row-bg);
+  border: 1px solid var(--noto-list-row-border);
 }
 
 .action-main {
@@ -113,7 +113,7 @@ const formatMeta = (item: TodoItem) => {
 }
 
 .action-main strong {
-  color: #101828;
+  color: var(--noto-text);
   line-height: 1.45;
   font-size: 14px;
   overflow: hidden;

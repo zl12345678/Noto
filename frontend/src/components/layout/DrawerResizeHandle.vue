@@ -57,6 +57,6 @@ function onMouseUp() {
 }
 
 .drawer-resize-handle:hover {
-  background: rgba(22, 119, 255, 0.08);
+  background: var(--noto-resize-hover-bg);
 }
 </style>

@@ -170,7 +170,7 @@ defineExpose({ scrollToKey });
 }
 
 .tree-node-row:hover {
-  background: rgba(15, 23, 42, 0.05);
+  background: var(--noto-hover-bg);
 }
 
 :root[data-theme='dark'] .tree-node-row:hover {

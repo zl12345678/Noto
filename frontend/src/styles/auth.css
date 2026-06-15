@@ -35,7 +35,7 @@
   background:
     radial-gradient(circle at 85% 20%, rgba(8, 145, 178, 0.1), transparent 45%),
     radial-gradient(circle at 10% 90%, rgba(99, 102, 241, 0.08), transparent 40%),
-    linear-gradient(165deg, #ffffff 0%, #f8fafc 100%);
+    linear-gradient(165deg, var(--noto-surface) 0%, var(--noto-canvas-alt) 100%);
   border: 1px solid var(--noto-border);
   display: flex;
   flex-direction: column;
@@ -108,14 +108,14 @@
 .auth-card-shell {
   padding: 6px;
   border-radius: 28px;
-  background: rgba(255, 255, 255, 0.8);
+  background: color-mix(in srgb, var(--noto-surface) 80%, transparent);
   border: 1px solid var(--noto-border-soft);
 }
 
 .auth-card {
   padding: 36px 32px;
   border-radius: calc(28px - 6px);
-  background: #ffffff;
+  background: var(--noto-surface);
   border: 1px solid var(--noto-border);
   box-shadow: var(--noto-shadow-soft);
 }

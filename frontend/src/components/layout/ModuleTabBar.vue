@@ -147,8 +147,8 @@ onUnmounted(() => {
 .module-tab-bar {
   position: relative;
   flex-shrink: 0;
-  border-bottom: 1px solid var(--noto-border, #e2e8f0);
-  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid var(--noto-border);
+  background: var(--noto-tab-bar-bg);
 }
 
 .module-tab-scroll {
@@ -172,8 +172,8 @@ onUnmounted(() => {
   padding: 5px 10px 5px 8px;
   border: 1px solid transparent;
   border-radius: 999px;
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--noto-tab-bg);
+  color: var(--noto-tab-text);
   font-size: 12px;
   line-height: 1.4;
   cursor: pointer;
@@ -185,20 +185,20 @@ onUnmounted(() => {
 }
 
 .module-tab:hover {
-  background: #e2e8f0;
-  color: #0f172a;
+  background: var(--noto-tab-bg-hover);
+  color: var(--noto-tab-text-hover);
 }
 
 .module-tab.active {
-  background: rgba(8, 145, 178, 0.1);
+  background: var(--noto-pastel-blue);
   border-color: rgba(8, 145, 178, 0.28);
-  color: #0e7490;
+  color: var(--noto-accent-deep);
   font-weight: 600;
 }
 
 .module-tab.pinned {
-  background: #fff;
-  border-color: rgba(15, 23, 42, 0.08);
+  background: var(--noto-tab-pinned-bg);
+  border-color: var(--noto-border-soft);
 }
 
 .module-tab.pinned.active {
@@ -221,8 +221,8 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   font-size: 11px;
-  background: #fff;
-  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: var(--noto-tab-icon-bg);
+  border: 1px solid var(--noto-border-soft);
   flex-shrink: 0;
 }
 
@@ -245,13 +245,13 @@ onUnmounted(() => {
   justify-content: center;
   font-size: 14px;
   line-height: 1;
-  color: #94a3b8;
+  color: var(--noto-text-muted);
   flex-shrink: 0;
 }
 
 .module-tab-close:hover {
-  background: rgba(15, 23, 42, 0.08);
-  color: #475569;
+  background: var(--noto-hover-bg);
+  color: var(--noto-text);
 }
 
 .module-tab-context-menu {
@@ -260,6 +260,6 @@ onUnmounted(() => {
   min-width: 160px;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  box-shadow: var(--noto-dropdown-shadow);
 }
 </style>

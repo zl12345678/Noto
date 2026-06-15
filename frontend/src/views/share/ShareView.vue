@@ -155,7 +155,7 @@ onMounted(loadShare);
 <style scoped>
 .share-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+  background: linear-gradient(180deg, var(--noto-canvas-alt) 0%, var(--noto-pastel-violet) 100%);
 }
 
 .share-header {
@@ -189,7 +189,7 @@ onMounted(loadShare);
 .share-note,
 .share-file,
 .share-batch {
-  background: #fff;
+  background: var(--noto-surface);
   border-radius: 16px;
   box-shadow: 0 10px 40px rgba(15, 23, 42, 0.08);
   padding: 32px;

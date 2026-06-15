@@ -3,8 +3,8 @@
     <MdPreview
       :model-value="modelValue"
       :theme="previewTheme"
-      preview-theme="github"
-      code-theme="atom"
+      :preview-theme="previewTheme === 'dark' ? 'github-dark' : 'github'"
+      :code-theme="previewTheme === 'dark' ? 'atom-one-dark' : 'atom'"
       :show-code-row-number="true"
       language="zh-CN"
       :no-mermaid="true"

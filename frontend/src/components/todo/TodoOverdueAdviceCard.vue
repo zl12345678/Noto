@@ -72,8 +72,8 @@ const loadAdvice = async () => {
 <style scoped>
 .overdue-advice-card {
   margin-bottom: 16px;
-  border: 1px solid #fecaca;
-  background: linear-gradient(180deg, #fff5f5 0%, #fff 100%);
+  border: 1px solid var(--noto-overdue-card-border);
+  background: var(--noto-overdue-card-bg);
 }
 
 .card-head {
@@ -87,21 +87,21 @@ const loadAdvice = async () => {
 .card-head h3 {
   margin: 0;
   font-size: 15px;
-  color: #991b1b;
+  color: var(--noto-overdue-card-title, #991b1b);
 }
 
 .card-desc {
   margin: 4px 0 0;
   font-size: 12px;
-  color: #b45309;
+  color: var(--noto-overdue-card-desc, #b45309);
 }
 
 .advice-summary {
   margin-bottom: 12px;
   padding: 8px 10px;
   border-radius: 8px;
-  background: #fff;
-  color: #475467;
+  background: var(--noto-surface);
+  color: var(--noto-text-muted);
   font-size: 13px;
 }
 </style>

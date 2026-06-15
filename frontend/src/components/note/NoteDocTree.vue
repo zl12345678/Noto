@@ -142,8 +142,8 @@ defineExpose({ treeRef, readTreeData });
 
 <style scoped>
 .note-doc-tree {
-  --he-tree-drag-placeholder-bg: rgba(15, 23, 42, 0.06);
-  --he-tree-drag-placeholder-border: rgba(15, 23, 42, 0.2);
+  --he-tree-drag-placeholder-bg: var(--noto-hover-bg);
+  --he-tree-drag-placeholder-border: var(--noto-border);
 }
 
 .note-doc-tree :deep(.tree-node) {
@@ -152,8 +152,8 @@ defineExpose({ treeRef, readTreeData });
 
 .note-doc-tree :deep(.drag-placeholder) {
   border-radius: 8px;
-  border: 1px dashed rgba(15, 23, 42, 0.28);
-  background: rgba(15, 23, 42, 0.04);
+  border: 1px dashed var(--noto-border);
+  background: var(--noto-hover-bg);
 }
 
 .tree-node-row {
@@ -168,15 +168,15 @@ defineExpose({ treeRef, readTreeData });
 }
 
 .tree-node-row.is-selected {
-  background: rgba(15, 23, 42, 0.06);
+  background: var(--noto-hover-bg);
 }
 
 .tree-node-row:hover {
-  background: rgba(15, 23, 42, 0.04);
+  background: var(--noto-hover-bg);
 }
 
 .tree-node-row.is-selected:hover {
-  background: rgba(15, 23, 42, 0.08);
+  background: var(--noto-hover-bg);
 }
 
 .tree-open-icon,
@@ -187,7 +187,7 @@ defineExpose({ treeRef, readTreeData });
 }
 
 .tree-open-icon {
-  color: #98a2b3;
+  color: var(--noto-muted-icon);
   cursor: pointer;
 }
 
@@ -203,11 +203,11 @@ defineExpose({ treeRef, readTreeData });
 
 .tree-node-label.is-folder {
   font-weight: 600;
-  color: #344054;
+  color: var(--noto-text);
 }
 
 .tree-node-label.is-note {
-  color: #475467;
+  color: var(--noto-text-muted);
 }
 
 </style>

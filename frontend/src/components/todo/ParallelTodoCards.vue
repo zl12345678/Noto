@@ -75,8 +75,8 @@ const cardMeta = (item: TodoItem) => {
 .parallel-card {
   padding: 12px 14px;
   border-radius: 14px;
-  background: linear-gradient(180deg, #f0f7ff 0%, #fff 100%);
-  border: 1px solid #d6e4ff;
+  background: var(--noto-parallel-card-bg);
+  border: 1px solid var(--noto-parallel-card-border);
 }
 
 .card-top {
@@ -89,7 +89,7 @@ const cardMeta = (item: TodoItem) => {
 .parallel-card h4 {
   margin: 0;
   font-size: 15px;
-  color: #101828;
+  color: var(--noto-text);
   line-height: 1.4;
   flex: 1;
   min-width: 0;

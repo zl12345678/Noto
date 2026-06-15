@@ -203,8 +203,8 @@ defineExpose({
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border-left: 1px solid var(--noto-border-soft, #eef2f7);
-  background: var(--noto-canvas-alt, #fafcff);
+  border-left: 1px solid var(--noto-border-soft);
+  background: var(--noto-canvas-alt);
   outline: none;
 }
 
@@ -216,7 +216,7 @@ defineExpose({
   z-index: 45;
   max-width: min(88vw, 300px);
   width: min(88vw, 300px);
-  box-shadow: -8px 0 24px rgba(15, 23, 42, 0.12);
+  box-shadow: var(--noto-drawer-shadow);
 }
 
 .note-outline-head {

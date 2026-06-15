@@ -454,11 +454,11 @@ const stages = computed(() => [
 
 .workflow-stage.stage-empty {
   border-style: dashed;
-  background: #fafbfc;
+  background: var(--noto-stage-empty-bg);
 }
 
 .variant-hero .workflow-stage.stage-empty {
-  background: #f9fafb;
+  background: var(--noto-stage-empty-bg);
 }
 
 .workflow-stage:hover {
@@ -479,7 +479,7 @@ const stages = computed(() => [
 .stage-titles h4 {
   margin: 0;
   font-size: 14px;
-  color: #0f172a;
+  color: var(--noto-text);
   line-height: 1.35;
   word-break: break-word;
 }
@@ -521,9 +521,9 @@ const stages = computed(() => [
 .mini-item {
   padding: 8px 10px;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--stage-accent) 8%, #f8fafc);
+  background: color-mix(in srgb, var(--stage-accent) 12%, var(--noto-list-row-bg));
   font-size: 12px;
-  color: #334155;
+  color: var(--noto-text);
   line-height: 1.45;
   word-break: break-word;
 }
@@ -546,7 +546,7 @@ const stages = computed(() => [
 }
 
 .mini-item.clickable:hover {
-  background: #eff6ff;
+  background: var(--noto-hover-bg);
 }
 
 .drag-grip {
