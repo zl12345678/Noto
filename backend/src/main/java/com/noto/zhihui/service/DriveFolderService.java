@@ -10,7 +10,7 @@ import java.util.List;
 
 public interface DriveFolderService extends IService<DriveFolderEntity> {
 
-    List<DriveFolderVO> listFolders(Long workspaceId, Long userId);
+    List<DriveFolderVO> listFolders(Long workspaceId, Long userId, String keyword);
 
     DriveFolderVO createFolder(DriveFolderCreateRequest request, Long userId);
 

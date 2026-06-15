@@ -78,14 +78,45 @@ export function collectDriveFolderTreeKeys(nodes: DriveFolderTreeNode[]): string
 }
 
 export function getDriveFolderPath(folderId: string, folders: DriveFolder[]): string {
+  return getDriveFolderAncestors(folderId, folders)
+    .map((folder) => folder.name)
+    .join(' / ');
+}
+
+export function getDriveFolderAncestors(folderId: string, folders: DriveFolder[]): DriveFolder[] {
   const byId = new Map(folders.map((folder) => [folder.id, folder]));
-  const parts: string[] = [];
+  const ancestors: DriveFolder[] = [];
   let current = byId.get(folderId);
   const guard = new Set<string>();
   while (current && !guard.has(current.id)) {
     guard.add(current.id);
-    parts.unshift(current.name);
+    ancestors.unshift(current);
     current = current.parentId ? byId.get(current.parentId) : undefined;
   }
-  return parts.join(' / ');
+  return ancestors;
+}
+
+export function getDriveFolderDescendantIds(folderId: string, folders: DriveFolder[]): string[] {
+  const result: string[] = [];
+  const childrenByParent = new Map<string, DriveFolder[]>();
+  folders.forEach((folder) => {
+    const parentId = folder.parentId ?? null;
+    if (!parentId) return;
+    const list = childrenByParent.get(parentId) ?? [];
+    list.push(folder);
+    childrenByParent.set(parentId, list);
+  });
+  const walk = (parentId: string) => {
+    const children = childrenByParent.get(parentId) ?? [];
+    children.forEach((child) => {
+      result.push(child.id);
+      walk(child.id);
+    });
+  };
+  walk(folderId);
+  return result;
+}
+
+export function getDriveFolderParentId(folderId: string, folders: DriveFolder[]): string | null {
+  return folders.find((folder) => folder.id === folderId)?.parentId ?? null;
 }

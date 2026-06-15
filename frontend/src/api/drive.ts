@@ -31,6 +31,15 @@ export interface DriveFileQuery {
   uncategorized?: boolean;
   noteId?: string;
   unlinkedOnly?: boolean;
+  keyword?: string;
+}
+
+export interface DriveBatchDownloadPayload {
+  ids?: string[];
+  folderIds?: string[];
+  uncategorized?: boolean;
+  unlinkedOnly?: boolean;
+  workspaceId?: string;
 }
 
 export function listDriveFiles(params: DriveFileQuery) {
@@ -53,8 +62,10 @@ export function moveDriveFileToFolder(attachmentId: string, folderId?: string | 
   });
 }
 
-export function listDriveFolders(workspaceId: string) {
-  return http.get<DriveFolder[]>('/drive/folders', { params: { workspaceId } });
+export function listDriveFolders(workspaceId: string, keyword?: string) {
+  return http.get<DriveFolder[]>('/drive/folders', {
+    params: keyword ? { workspaceId, keyword } : { workspaceId },
+  });
 }
 
 export function createDriveFolder(workspaceId: string, name: string, parentId?: string | null) {
@@ -81,17 +92,20 @@ export function unlinkDriveFileFromNote(attachmentId: string, noteId: string) {
   });
 }
 
-export async function batchDownloadDriveFiles(ids: string[]) {
-  if (!ids.length) {
-    throw new Error('请选择要下载的文件');
+export async function batchDownloadDriveSelection(payload: DriveBatchDownloadPayload) {
+  const hasFiles = payload.ids?.length;
+  const hasFolders = payload.folderIds?.length;
+  const hasVirtual = payload.uncategorized || payload.unlinkedOnly;
+  if (!hasFiles && !hasFolders && !hasVirtual) {
+    throw new Error('请选择要下载的项目');
   }
+
   const prepare = await http.post<{ ticket: string; filename: string }>(
     '/drive/files/batch-download/prepare',
-    { ids },
+    payload,
   );
   const url = `/api/v1/drive/files/batch-download/${encodeURIComponent(prepare.ticket)}`;
 
-  // 浏览器原生下载：避免 fetch 读取 ZIP 流时 DevTools/代理中断导致 ERR_FAILED
   const iframe = document.createElement('iframe');
   iframe.style.display = 'none';
   iframe.src = url;
@@ -99,4 +113,9 @@ export async function batchDownloadDriveFiles(ids: string[]) {
   window.setTimeout(() => {
     iframe.remove();
   }, 120_000);
+}
+
+/** @deprecated 使用 batchDownloadDriveSelection */
+export async function batchDownloadDriveFiles(ids: string[]) {
+  return batchDownloadDriveSelection({ ids });
 }

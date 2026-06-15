@@ -130,7 +130,7 @@ public class AgentWorkspaceTools {
         try {
             Long folderId = resolveDriveFolderId(null, folderKeyword, ctx);
             List<AttachmentVO> files = attachmentService.listByWorkspace(
-                    ctx.getWorkspaceId(), folderId, folderId == null ? null : false, null, null, ctx.getUserId()
+                    ctx.getWorkspaceId(), folderId, folderId == null ? null : false, null, null, null, ctx.getUserId()
             );
             if (StringUtils.hasText(keyword)) {
                 String lower = keyword.trim().toLowerCase(Locale.ROOT);
@@ -154,7 +154,7 @@ public class AgentWorkspaceTools {
         AgentExecutionContext ctx = AgentExecutionContext.current();
         Map<String, Object> input = Map.of();
         try {
-            List<DriveFolderVO> folders = driveFolderService.listFolders(ctx.getWorkspaceId(), ctx.getUserId());
+            List<DriveFolderVO> folders = driveFolderService.listFolders(ctx.getWorkspaceId(), ctx.getUserId(), null);
             List<Map<String, Object>> items = folders.stream()
                     .map(folder -> Map.<String, Object>of(
                             "folderId", folder.getId(),
@@ -652,7 +652,7 @@ public class AgentWorkspaceTools {
             return null;
         }
         String lower = fileName.trim().toLowerCase(Locale.ROOT);
-        return attachmentService.listByWorkspace(ctx.getWorkspaceId(), null, null, null, null, ctx.getUserId())
+        return attachmentService.listByWorkspace(ctx.getWorkspaceId(), null, null, null, null, null, ctx.getUserId())
                 .stream()
                 .filter(file -> file.getFileName() != null
                         && file.getFileName().toLowerCase(Locale.ROOT).contains(lower))
@@ -668,7 +668,7 @@ public class AgentWorkspaceTools {
         if (!StringUtils.hasText(folderName)) {
             return null;
         }
-        return driveFolderService.listFolders(ctx.getWorkspaceId(), ctx.getUserId()).stream()
+        return driveFolderService.listFolders(ctx.getWorkspaceId(), ctx.getUserId(), null).stream()
                 .filter(folder -> folder.getName() != null && (
                         folder.getName().equals(folderName.trim())
                                 || folder.getName().contains(folderName.trim())

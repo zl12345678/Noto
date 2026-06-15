@@ -69,10 +69,12 @@ public class DriveController {
             @RequestParam(required = false) Long folderId,
             @RequestParam(required = false) Boolean uncategorized,
             @RequestParam(required = false) Long noteId,
-            @RequestParam(required = false) Boolean unlinkedOnly
+            @RequestParam(required = false) Boolean unlinkedOnly,
+            @RequestParam(required = false) String keyword
     ) {
         return ApiResponse.success(
-                attachmentService.listByWorkspace(workspaceId, folderId, uncategorized, noteId, unlinkedOnly, requireUserId()),
+                attachmentService.listByWorkspace(
+                        workspaceId, folderId, uncategorized, noteId, unlinkedOnly, keyword, requireUserId()),
                 null
         );
     }
@@ -96,11 +98,21 @@ public class DriveController {
 
     @PostMapping("/files/batch-download/prepare")
     public ApiResponse<BatchDownloadPrepareVO> prepareBatchDownload(
-            @Valid @RequestBody DriveBatchDownloadRequest request
+            @RequestBody DriveBatchDownloadRequest request
     ) throws IOException {
         Long userId = requireUserId();
         List<Long> attachmentIds = parseAttachmentIds(request.getIds());
-        List<NoteAttachmentEntity> entities = attachmentService.resolveBatchDownloadEntities(attachmentIds, userId);
+        List<Long> folderIds = parseFolderIds(request.getFolderIds());
+        validateBatchDownloadRequest(request, attachmentIds, folderIds);
+
+        List<NoteAttachmentEntity> entities = attachmentService.resolveBatchDownloadSelection(
+                attachmentIds,
+                folderIds,
+                request.getUncategorized(),
+                request.getUnlinkedOnly(),
+                request.getWorkspaceId(),
+                userId
+        );
 
         Path zipFile = attachmentService.buildBatchDownloadZipFile(entities);
         String filename = "noto-drive-" + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE) + ".zip";
@@ -145,8 +157,11 @@ public class DriveController {
     }
 
     @GetMapping("/folders")
-    public ApiResponse<List<DriveFolderVO>> listFolders(@RequestParam Long workspaceId) {
-        return ApiResponse.success(driveFolderService.listFolders(workspaceId, requireUserId()), null);
+    public ApiResponse<List<DriveFolderVO>> listFolders(
+            @RequestParam Long workspaceId,
+            @RequestParam(required = false) String keyword
+    ) {
+        return ApiResponse.success(driveFolderService.listFolders(workspaceId, requireUserId(), keyword), null);
     }
 
     @PostMapping("/folders")
@@ -170,7 +185,7 @@ public class DriveController {
 
     private List<Long> parseAttachmentIds(List<String> rawIds) {
         if (rawIds == null || rawIds.isEmpty()) {
-            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "请选择要下载的文件");
+            return List.of();
         }
         List<Long> parsed = new ArrayList<>();
         for (String rawId : rawIds) {
@@ -183,10 +198,42 @@ public class DriveController {
                 throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "无效的文件 ID");
             }
         }
-        if (parsed.isEmpty()) {
-            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "请选择要下载的文件");
+        return parsed.stream().distinct().toList();
+    }
+
+    private List<Long> parseFolderIds(List<String> rawIds) {
+        if (rawIds == null || rawIds.isEmpty()) {
+            return List.of();
+        }
+        List<Long> parsed = new ArrayList<>();
+        for (String rawId : rawIds) {
+            if (!StringUtils.hasText(rawId)) {
+                continue;
+            }
+            try {
+                parsed.add(Long.parseLong(rawId.trim()));
+            } catch (NumberFormatException ex) {
+                throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "无效的文件夹 ID");
+            }
         }
         return parsed.stream().distinct().toList();
+    }
+
+    private void validateBatchDownloadRequest(
+            DriveBatchDownloadRequest request,
+            List<Long> attachmentIds,
+            List<Long> folderIds
+    ) {
+        boolean hasFiles = !attachmentIds.isEmpty();
+        boolean hasFolders = !folderIds.isEmpty();
+        boolean hasVirtual = Boolean.TRUE.equals(request.getUncategorized())
+                || Boolean.TRUE.equals(request.getUnlinkedOnly());
+        if (!hasFiles && !hasFolders && !hasVirtual) {
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "请选择要下载的文件或文件夹");
+        }
+        if ((hasFolders || hasVirtual) && request.getWorkspaceId() == null) {
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "批量下载文件夹需要指定知识库");
+        }
     }
 
     private boolean isClientAbort(Throwable ex) {

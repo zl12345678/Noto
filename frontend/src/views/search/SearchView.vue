@@ -99,6 +99,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
 import { searchNotes, type SearchResult } from '../../api/search';
+import { buildSearchCacheKey, getSearchCache, setSearchCache } from '../../utils/searchCache';
 import { listFolders } from '../../api/folders';
 import { listTags } from '../../api/tags';
 import { listWorkspaces, type Workspace } from '../../api/workspaces';
@@ -168,6 +169,26 @@ const loadResults = async () => {
     searched.value = false;
     return;
   }
+  const cacheKey = buildSearchCacheKey({
+    keyword: q,
+    page: page.value,
+    size: pageSize.value,
+    workspaceId: filters.workspaceId ?? null,
+    tagId: filters.tagId ?? null,
+    folderId: filters.folderId ?? null,
+  });
+  const cached = getSearchCache(cacheKey);
+  if (cached) {
+    results.value = cached.records || [];
+    total.value = cached.total || 0;
+    searched.value = true;
+    const query: Record<string, string> = { q };
+    if (filters.workspaceId) query.workspace = filters.workspaceId;
+    if (filters.tagId) query.tag = filters.tagId;
+    if (filters.folderId) query.folder = filters.folderId;
+    router.replace({ path: '/search', query });
+    return;
+  }
   loading.value = true;
   try {
     const data = await searchNotes({
@@ -178,6 +199,7 @@ const loadResults = async () => {
       tagId: filters.tagId,
       folderId: filters.folderId,
     });
+    setSearchCache(cacheKey, data);
     results.value = data.records || [];
     total.value = data.total || 0;
     searched.value = true;
@@ -235,6 +257,15 @@ watch(
     await Promise.all([loadTags(workspaceId), loadFolders(workspaceId)]);
   },
 );
+
+let keywordDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+watch(keyword, () => {
+  if (keywordDebounceTimer) clearTimeout(keywordDebounceTimer);
+  keywordDebounceTimer = setTimeout(() => {
+    page.value = 1;
+    void loadResults();
+  }, 400);
+});
 
 onMounted(async () => {
   workspaces.value = await listWorkspaces();

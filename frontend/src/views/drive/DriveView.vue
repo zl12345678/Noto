@@ -5,7 +5,7 @@
         <div>
           <p class="noto-page-eyebrow">知识库文件</p>
           <h2 class="noto-page-title">网盘</h2>
-          <p class="hero-desc">按文件夹管理文件，按文档筛选关联，并支持插入到正文</p>
+          <p class="hero-desc">像资源管理器一样浏览文件夹，按文档筛选关联，并支持插入到正文</p>
         </div>
         <a-upload :show-upload-list="false" :before-upload="handleUpload" :disabled="uploading || !workspaceId">
           <a-button type="primary" size="large" :loading="uploading">上传文件</a-button>
@@ -31,132 +31,222 @@
         />
         <a-input-search
           v-model:value="keyword"
-          placeholder="搜索文件名"
+          placeholder="搜索文件名或文件夹"
           allow-clear
           style="min-width: 220px"
         />
       </a-space>
     </a-card>
 
-    <div class="drive-layout">
-      <a-card class="folder-card noto-surface-card" :bordered="false" :loading="foldersLoading">
-        <div class="tree-toolbar">
-          <div class="tree-head">
-            <span class="folder-title">文件夹</span>
-            <a-dropdown :disabled="!workspaceId">
-              <a-button type="primary" size="small">新建</a-button>
-              <template #overlay>
-                <a-menu @click="handleCreateMenu">
-                  <a-menu-item key="folder">新建文件夹</a-menu-item>
-                  <a-menu-item key="subfolder" :disabled="!selectedFolder">新建子文件夹</a-menu-item>
-                </a-menu>
-              </template>
-            </a-dropdown>
-          </div>
-        </div>
-        <div class="tree-body" @contextmenu="onTreeBodyContextMenu">
-          <a-menu
-            mode="inline"
-            :selected-keys="[activeFolderKey]"
-            class="folder-menu folder-menu-fixed"
-            @click="onFolderMenuClick"
+    <a-card
+      class="drive-explorer-card noto-surface-card"
+      :bordered="false"
+      :loading="loading || foldersLoading"
+      @contextmenu="onExplorerBodyContextMenu"
+    >
+      <div class="explorer-toolbar">
+        <div class="explorer-nav">
+          <a-button
+            type="text"
+            class="explorer-back"
+            :disabled="!canGoBack"
+            aria-label="返回上一级"
+            @click="goBack"
           >
-            <a-menu-item key="all">
-              <span>全部文件</span>
-              <span class="folder-count">{{ counts.all }}</span>
-            </a-menu-item>
-            <a-menu-item key="uncategorized">
-              <span>未分类</span>
-              <span class="folder-count">{{ counts.uncategorized }}</span>
-            </a-menu-item>
-            <a-menu-item key="unlinked">
-              <span>未关联文档</span>
-              <span class="folder-count">{{ counts.unlinked }}</span>
-            </a-menu-item>
-          </a-menu>
-          <a-tree
-            v-if="folderTreeData.length"
-            class="folder-tree"
-            block-node
-            :tree-data="folderTreeData"
-            :selected-keys="folderTreeSelectedKeys"
-            :expanded-keys="folderExpandedKeys"
-            @select="onFolderTreeSelect"
-            @expand="onFolderTreeExpand"
-            @rightClick="onFolderTreeRightClick"
-          />
-          <p v-else-if="!foldersLoading && workspaceId" class="folder-empty">右键空白处可新建文件夹</p>
+            <ArrowLeftOutlined />
+          </a-button>
+          <a-breadcrumb class="explorer-breadcrumb">
+            <a-breadcrumb-item
+              v-for="item in breadcrumbItems"
+              :key="item.key"
+            >
+              <a v-if="item.clickable" href="#" @click.prevent="navigateTo(item.key)">{{ item.label }}</a>
+              <span v-else>{{ item.label }}</span>
+            </a-breadcrumb-item>
+          </a-breadcrumb>
         </div>
-      </a-card>
+        <div class="explorer-toolbar-actions">
+          <a-radio-group
+            v-model:value="fileViewMode"
+            size="small"
+            button-style="solid"
+            class="view-toggle"
+          >
+            <a-radio-button value="grid" aria-label="网格视图">
+              <AppstoreOutlined />
+            </a-radio-button>
+            <a-radio-button value="list" aria-label="列表视图">
+              <UnorderedListOutlined />
+            </a-radio-button>
+          </a-radio-group>
+          <a-dropdown :disabled="!workspaceId">
+            <a-button size="small">新建文件夹</a-button>
+            <template #overlay>
+              <a-menu @click="handleCreateMenu">
+                <a-menu-item key="folder">新建文件夹</a-menu-item>
+                <a-menu-item key="subfolder" :disabled="!currentFolder">新建子文件夹</a-menu-item>
+              </a-menu>
+            </template>
+          </a-dropdown>
+        </div>
+      </div>
 
-      <a-card class="drive-table-card noto-surface-card" :bordered="false" :loading="loading">
-        <div v-if="filteredFiles.length" class="table-toolbar">
+      <div v-if="hasExplorerItems" class="table-toolbar">
           <a-space wrap>
-            <span v-if="selectedFileIds.length" class="selection-hint">
-              已选 {{ selectedFileIds.length }} 项
+            <span v-if="selectedKeys.length" class="selection-hint">
+              已选 {{ selectedKeys.length }} 项
             </span>
             <a-button
-              :disabled="!selectedFileIds.length"
+              :disabled="!selectedKeys.length"
               :loading="batchDownloading"
               @click="handleBatchDownload"
             >
               批量下载
             </a-button>
-            <a-button :disabled="!selectedFileIds.length" @click="batchShareModalOpen = true">
+            <a-button :disabled="!selectedKeys.length" @click="openBatchShareModal">
               批量分享
             </a-button>
-            <a-button type="link" :disabled="!selectedFileIds.length" @click="clearSelection">
+            <a-button type="link" :disabled="!selectedKeys.length" @click="clearSelection">
               取消选择
             </a-button>
           </a-space>
         </div>
+
+        <div v-if="hasExplorerItems && fileViewMode === 'grid'" class="explorer-items-grid">
+          <a-checkbox-group v-model:value="selectedKeys" class="explorer-items-group">
+            <div
+              v-for="item in explorerItems"
+              :key="item.key"
+              class="explorer-item"
+              :class="{
+                'is-selected': selectedKeys.includes(item.key),
+                'explorer-item--folder': item.kind === 'folder',
+                'explorer-item--file': item.kind === 'file',
+              }"
+              @click="handleGridItemClick(item, $event)"
+              @contextmenu="(event) => onExplorerItemContextMenu(event, item)"
+            >
+              <a-checkbox :value="item.key" class="item-select-check" />
+              <a-dropdown
+                v-if="item.kind === 'file' || (item.kind === 'folder' && item.folderId)"
+                :trigger="['click']"
+                @click.stop
+              >
+                <a-button type="text" size="small" class="item-grid-action" aria-label="操作">
+                  <MoreOutlined />
+                </a-button>
+                <template #overlay>
+                  <a-menu v-if="item.kind === 'file'" @click="handleGridFileAction(item.file)">
+                    <a-menu-item key="share">分享</a-menu-item>
+                    <a-menu-item key="link">关联文档</a-menu-item>
+                    <a-menu-item key="move">移动至…</a-menu-item>
+                    <a-menu-divider />
+                    <a-menu-item key="delete" danger>删除</a-menu-item>
+                  </a-menu>
+                  <a-menu v-else @click="handleGridFolderAction(item)">
+                    <a-menu-item key="rename">重命名</a-menu-item>
+                    <a-menu-divider />
+                    <a-menu-item key="delete" danger>删除</a-menu-item>
+                  </a-menu>
+                </template>
+              </a-dropdown>
+              <template v-if="item.kind === 'folder'">
+                <FolderOutlined class="explorer-item-icon explorer-item-icon--folder" />
+                <span class="explorer-item-name" :title="item.name">{{ item.name }}</span>
+                <span class="explorer-item-meta">{{ item.count }} 项</span>
+              </template>
+              <template v-else>
+                <component :is="getFileIcon(item.file)" class="explorer-item-icon" />
+                <a
+                  :href="item.file.fileUrl"
+                  target="_blank"
+                  rel="noopener"
+                  class="explorer-item-name"
+                  :title="item.name"
+                  @click.stop
+                >
+                  {{ item.name }}
+                </a>
+                <span class="explorer-item-meta">{{ formatSize(item.file.fileSize) }}</span>
+                <span v-if="item.file.linkedNotes?.length" class="explorer-item-linked">
+                  {{ item.file.linkedNotes.length }} 篇文档
+                </span>
+              </template>
+            </div>
+          </a-checkbox-group>
+        </div>
+
         <a-table
-          v-if="filteredFiles.length"
-          :data-source="filteredFiles"
+          v-if="hasExplorerItems && fileViewMode === 'list'"
+          :data-source="explorerItems"
           :columns="columns"
           :pagination="false"
           :row-selection="rowSelection"
-          row-key="id"
+          :custom-row="customTableRow"
+          row-key="key"
           size="middle"
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'fileName'">
-              <a :href="record.fileUrl" target="_blank" rel="noopener" class="file-link">
-                {{ record.fileName }}
-              </a>
+            <template v-if="column.key === 'name'">
+              <template v-if="record.kind === 'folder'">
+                <FolderOutlined class="list-item-icon list-item-icon--folder" />
+                <span class="folder-link">{{ record.name }}</span>
+              </template>
+              <template v-else>
+                <component :is="getFileIcon(record.file)" class="list-item-icon" />
+                <a :href="record.file.fileUrl" target="_blank" rel="noopener" class="file-link">
+                  {{ record.name }}
+                </a>
+              </template>
             </template>
-            <template v-else-if="column.key === 'folderName'">
-              {{ record.folderName || '未分类' }}
+            <template v-else-if="column.key === 'itemType'">
+              {{ record.kind === 'folder' ? '文件夹' : '文件' }}
             </template>
-            <template v-else-if="column.key === 'fileSize'">
-              {{ formatSize(record.fileSize) }}
+            <template v-else-if="column.key === 'size'">
+              <template v-if="record.kind === 'folder'">{{ record.count }} 项</template>
+              <template v-else>{{ formatSize(record.file.fileSize) }}</template>
             </template>
             <template v-else-if="column.key === 'linkedNotes'">
-              <a-space v-if="record.linkedNotes?.length" wrap :size="4">
-                <a-tag
-                  v-for="note in record.linkedNotes"
-                  :key="note.id"
-                  class="note-tag"
-                  @click="openNote(note.id)"
-                >
-                  {{ note.title || '未命名文档' }}
-                </a-tag>
-              </a-space>
-              <span v-else class="muted-text">未关联</span>
+              <template v-if="record.kind === 'file'">
+                <a-space v-if="record.file.linkedNotes?.length" wrap :size="4">
+                  <a-tag
+                    v-for="note in record.file.linkedNotes"
+                    :key="note.id"
+                    class="note-tag"
+                    @click="openNote(note.id)"
+                  >
+                    {{ note.title || '未命名文档' }}
+                  </a-tag>
+                </a-space>
+                <span v-else class="muted-text">未关联</span>
+              </template>
+              <span v-else class="muted-text">—</span>
             </template>
             <template v-else-if="column.key === 'createdAt'">
-              {{ formatTime(record.createdAt) }}
+              {{ record.kind === 'file' ? formatTime(record.file.createdAt) : '—' }}
             </template>
             <template v-else-if="column.key === 'actions'">
-              <a-dropdown :trigger="['click']">
+              <a-dropdown v-if="record.kind === 'file'" :trigger="['click']">
                 <a-button type="text" size="small" class="file-row-action" aria-label="文件操作">
                   <MoreOutlined />
                 </a-button>
                 <template #overlay>
-                  <a-menu @click="(event) => onFileAction(record, event)">
+                  <a-menu @click="handleGridFileAction(record.file)">
                     <a-menu-item key="share">分享</a-menu-item>
                     <a-menu-item key="link">关联文档</a-menu-item>
                     <a-menu-item key="move">移动至…</a-menu-item>
+                    <a-menu-divider />
+                    <a-menu-item key="delete" danger>删除</a-menu-item>
+                  </a-menu>
+                </template>
+              </a-dropdown>
+              <a-dropdown v-else-if="record.folderId" :trigger="['click']">
+                <a-button type="text" size="small" class="file-row-action" aria-label="文件夹操作">
+                  <MoreOutlined />
+                </a-button>
+                <template #overlay>
+                  <a-menu @click="handleGridFolderAction(record)">
+                    <a-menu-item key="rename">重命名</a-menu-item>
                     <a-menu-divider />
                     <a-menu-item key="delete" danger>删除</a-menu-item>
                   </a-menu>
@@ -167,9 +257,9 @@
         </a-table>
 
         <EmptyState
-          v-else-if="workspaceId && !loading"
-          title="没有匹配的文件"
-          description="切换文件夹或上传新文件；也可在文档附件侧栏从网盘关联"
+          v-else-if="workspaceId && !loading && !foldersLoading && !hasExplorerItems"
+          :title="emptyStateTitle"
+          :description="emptyStateDescription"
           preset="search"
         >
           <a-upload :show-upload-list="false" :before-upload="handleUpload" :disabled="uploading">
@@ -183,8 +273,7 @@
           description="网盘按知识库隔离，每个知识库有独立的文件空间"
           preset="search"
         />
-      </a-card>
-    </div>
+    </a-card>
 
     <DriveMoveFolderModal
       v-model:open="moveModalOpen"
@@ -210,12 +299,12 @@
       title="分享网盘文件"
     />
 
-    <BatchShareModal v-model:open="batchShareModalOpen" :file-ids="selectedFileIds" />
+    <BatchShareModal v-model:open="batchShareModalOpen" :file-ids="batchShareFileIds" />
 
     <a-dropdown
       v-model:open="contextMenu.open"
       :trigger="[]"
-      overlay-class-name="tree-context-menu"
+      overlay-class-name="explorer-context-menu"
     >
       <span class="context-menu-anchor" :style="{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }" />
       <template #overlay>
@@ -249,7 +338,19 @@ import dayjs from 'dayjs';
 import { computed, onActivated, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Modal, message } from 'ant-design-vue';
-import { MoreOutlined } from '@ant-design/icons-vue';
+import {
+  AppstoreOutlined,
+  ArrowLeftOutlined,
+  FileExcelOutlined,
+  FileImageOutlined,
+  FileOutlined,
+  FilePdfOutlined,
+  FileWordOutlined,
+  FileZipOutlined,
+  FolderOutlined,
+  MoreOutlined,
+  UnorderedListOutlined,
+} from '@ant-design/icons-vue';
 import EmptyState from '../../components/common/EmptyState.vue';
 import DriveLinkNoteModal from '../../components/drive/DriveLinkNoteModal.vue';
 import DriveMoveFolderModal from '../../components/drive/DriveMoveFolderModal.vue';
@@ -258,7 +359,7 @@ import ShareLinkModal from '../../components/share/ShareLinkModal.vue';
 import { deleteAttachment } from '../../api/attachments';
 import { listNotes } from '../../api/notes';
 import {
-  batchDownloadDriveFiles,
+  batchDownloadDriveSelection,
   createDriveFolder,
   deleteDriveFolder,
   listDriveFiles,
@@ -267,13 +368,49 @@ import {
   uploadDriveFile,
   type DriveFile,
   type DriveFolder,
+  type DriveBatchDownloadPayload,
 } from '../../api/drive';
 import { useWorkspaceStore } from '../../store/workspace';
 import {
-  buildDriveFolderTree,
-  collectDriveFolderTreeKeys,
-  driveFolderTreeToAntData,
+  getDriveFolderAncestors,
+  getDriveFolderDescendantIds,
+  getDriveFolderParentId,
 } from '../../utils/driveFolderTree';
+
+type DriveLocationKey = 'root' | 'uncategorized' | 'unlinked' | `folder:${string}`;
+type FileViewMode = 'list' | 'grid';
+
+const FILE_VIEW_STORAGE_KEY = 'noto-drive-file-view';
+
+function readStoredFileViewMode(): FileViewMode {
+  const raw = localStorage.getItem(FILE_VIEW_STORAGE_KEY);
+  return raw === 'grid' ? 'grid' : 'list';
+}
+
+type ExplorerFolderItem = {
+  key: DriveLocationKey;
+  name: string;
+  count: number;
+  folderId?: string;
+  virtual?: boolean;
+};
+
+type ExplorerItem =
+  | {
+      kind: 'folder';
+      key: string;
+      name: string;
+      count: number;
+      locationKey: DriveLocationKey;
+      folderId?: string;
+      virtual?: boolean;
+    }
+  | {
+      kind: 'file';
+      key: string;
+      name: string;
+      file: DriveFile;
+    };
 
 const route = useRoute();
 const router = useRouter();
@@ -289,7 +426,9 @@ const loading = ref(false);
 const foldersLoading = ref(false);
 const uploading = ref(false);
 const batchDownloading = ref(false);
-const selectedFileIds = ref<string[]>([]);
+const fileViewMode = ref<FileViewMode>(readStoredFileViewMode());
+const selectedKeys = ref<string[]>([]);
+const batchShareFileIds = ref<string[]>([]);
 const linkModalOpen = ref(false);
 const linkTargetId = ref<string>();
 const shareModalOpen = ref(false);
@@ -297,7 +436,7 @@ const shareTargetId = ref<string>();
 const batchShareModalOpen = ref(false);
 const moveModalOpen = ref(false);
 const moveTargetFile = ref<DriveFile | null>(null);
-const activeFolderKey = ref('all');
+const currentLocationKey = ref<DriveLocationKey>('root');
 const counts = ref({ all: 0, uncategorized: 0, unlinked: 0 });
 
 const folderModalOpen = ref(false);
@@ -306,7 +445,6 @@ const folderNameInput = ref('');
 const folderSaving = ref(false);
 const editingFolderId = ref<string>();
 const createFolderParentId = ref<string | null>(null);
-const folderExpandedKeys = ref<string[]>([]);
 
 type DriveTreeContextNode =
   | { kind: 'root' }
@@ -326,11 +464,121 @@ const contextMenu = reactive({
   node: null as DriveTreeContextNode | null,
 });
 
-const folderTreeNodes = computed(() => buildDriveFolderTree(folders.value));
-const folderTreeData = computed(() => driveFolderTreeToAntData(folderTreeNodes.value));
-const folderTreeSelectedKeys = computed(() =>
-  activeFolderKey.value.startsWith('folder:') ? [activeFolderKey.value] : [],
-);
+const currentFolder = computed(() => {
+  if (!currentLocationKey.value.startsWith('folder:')) return null;
+  const id = currentLocationKey.value.replace('folder:', '');
+  return folders.value.find((item) => item.id === id) ?? null;
+});
+
+const currentParentId = computed(() => {
+  if (currentLocationKey.value.startsWith('folder:')) {
+    return currentLocationKey.value.replace('folder:', '');
+  }
+  return null;
+});
+
+const breadcrumbItems = computed(() => {
+  const items: Array<{ key: DriveLocationKey; label: string; clickable: boolean }> = [
+    { key: 'root', label: '网盘', clickable: currentLocationKey.value !== 'root' },
+  ];
+
+  if (currentLocationKey.value === 'uncategorized') {
+    items.push({ key: 'uncategorized', label: '未分类', clickable: false });
+    return items;
+  }
+  if (currentLocationKey.value === 'unlinked') {
+    items.push({ key: 'unlinked', label: '未关联文档', clickable: false });
+    return items;
+  }
+  if (currentLocationKey.value.startsWith('folder:')) {
+    const folderId = currentLocationKey.value.replace('folder:', '');
+    const ancestors = getDriveFolderAncestors(folderId, folders.value);
+    ancestors.forEach((folder, index) => {
+      const isLast = index === ancestors.length - 1;
+      items.push({
+        key: `folder:${folder.id}`,
+        label: folder.name,
+        clickable: !isLast,
+      });
+    });
+  }
+  return items;
+});
+
+const canGoBack = computed(() => currentLocationKey.value !== 'root');
+
+const explorerFolders = computed<ExplorerFolderItem[]>(() => {
+  const q = keyword.value.trim();
+  if (q) {
+    return folders.value
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
+      .map((folder) => ({
+        key: `folder:${folder.id}` as DriveLocationKey,
+        name: folder.name,
+        count: folder.fileCount ?? 0,
+        folderId: folder.id,
+      }));
+  }
+
+  if (currentLocationKey.value === 'uncategorized' || currentLocationKey.value === 'unlinked') {
+    return [];
+  }
+
+  const parentId =
+    currentLocationKey.value === 'root'
+      ? null
+      : currentLocationKey.value.replace('folder:', '');
+
+  const childFolders = folders.value
+    .filter((folder) => (folder.parentId ?? null) === parentId)
+    .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
+    .map((folder) => ({
+      key: `folder:${folder.id}` as DriveLocationKey,
+      name: folder.name,
+      count: folder.fileCount ?? 0,
+      folderId: folder.id,
+    }));
+
+  if (currentLocationKey.value !== 'root') {
+    return childFolders;
+  }
+
+  return [
+    ...childFolders,
+    {
+      key: 'uncategorized' as DriveLocationKey,
+      name: '未分类',
+      count: counts.value.uncategorized,
+      virtual: true,
+    },
+    {
+      key: 'unlinked' as DriveLocationKey,
+      name: '未关联文档',
+      count: counts.value.unlinked,
+      virtual: true,
+    },
+  ];
+});
+
+const emptyStateTitle = computed(() => {
+  if (keyword.value.trim()) return '没有匹配的项目';
+  if (currentLocationKey.value === 'root') return '此目录为空';
+  if (currentLocationKey.value === 'uncategorized') return '暂无未分类文件';
+  if (currentLocationKey.value === 'unlinked') return '暂无未关联文档的文件';
+  return '此文件夹为空';
+});
+
+const emptyStateDescription = computed(() => {
+  if (keyword.value.trim()) {
+    return '试试其他关键词，或进入文件夹浏览';
+  }
+  if (currentLocationKey.value === 'root') {
+    return '新建文件夹或上传文件；也可在文档附件侧栏从网盘关联';
+  }
+  return '上传文件到此文件夹，或返回上级目录浏览';
+});
+
 const createFolderParentName = computed(() => {
   if (!createFolderParentId.value) return '';
   return folders.value.find((item) => item.id === createFolderParentId.value)?.name ?? '';
@@ -340,31 +588,67 @@ const workspaceOptions = computed(() =>
   workspaceStore.items.map((item) => ({ label: item.name, value: item.id })),
 );
 
-const selectedFolder = computed(() => {
-  if (!activeFolderKey.value.startsWith('folder:')) return null;
-  const id = activeFolderKey.value.replace('folder:', '');
-  return folders.value.find((item) => item.id === id) ?? null;
+const filteredFiles = computed(() => files.value);
+
+const folderSelectionKey = (folder: ExplorerFolderItem) =>
+  folder.virtual ? `location:${folder.key}` : `folder:${folder.folderId}`;
+
+const explorerItems = computed<ExplorerItem[]>(() => {
+  const folderItems: ExplorerItem[] = explorerFolders.value.map((folder) => ({
+      kind: 'folder' as const,
+      key: folderSelectionKey(folder),
+      name: folder.name,
+      count: folder.count,
+      locationKey: folder.key,
+      folderId: folder.folderId,
+      virtual: folder.virtual,
+    }));
+
+  const fileItems: ExplorerItem[] = filteredFiles.value.map((file) => ({
+    kind: 'file' as const,
+    key: `file:${file.id}`,
+    name: file.fileName,
+    file,
+  }));
+
+  return [...folderItems, ...fileItems];
 });
 
-const filteredFiles = computed(() => {
-  const q = keyword.value.trim().toLowerCase();
-  if (!q) return files.value;
-  return files.value.filter((item) => item.fileName.toLowerCase().includes(q));
-});
+const hasExplorerItems = computed(() => explorerItems.value.length > 0);
 
 const rowSelection = computed(() => ({
-  selectedRowKeys: selectedFileIds.value,
+  type: 'checkbox' as const,
+  selectedRowKeys: selectedKeys.value,
   onChange: (keys: (string | number)[]) => {
-    selectedFileIds.value = keys.map(String);
+    selectedKeys.value = keys.map(String);
   },
 }));
 
+const customTableRow = (record: ExplorerItem) => ({
+  onClick: (event: MouseEvent) => {
+    const target = event.target as HTMLElement;
+    if (
+      target.closest('.ant-checkbox-wrapper')
+      || target.closest('.ant-table-selection-column')
+      || target.closest('.file-row-action')
+      || target.closest('.ant-dropdown')
+      || target.closest('a')
+    ) {
+      return;
+    }
+    if (record.kind === 'folder') {
+      void navigateTo(record.locationKey);
+    }
+  },
+  style: record.kind === 'folder' ? { cursor: 'pointer' } : {},
+});
+
 const columns = [
-  { title: '文件名', dataIndex: 'fileName', key: 'fileName', ellipsis: true },
-  { title: '文件夹', key: 'folderName', width: 120 },
-  { title: '大小', dataIndex: 'fileSize', key: 'fileSize', width: 90 },
+  { title: '名称', key: 'name', ellipsis: true },
+  { title: '类型', key: 'itemType', width: 90 },
+  { title: '大小', key: 'size', width: 90 },
   { title: '关联文档', key: 'linkedNotes' },
-  { title: '上传时间', dataIndex: 'createdAt', key: 'createdAt', width: 140 },
+  { title: '上传时间', key: 'createdAt', width: 140 },
   { title: '操作', key: 'actions', width: 72, align: 'center' as const },
 ];
 
@@ -379,6 +663,142 @@ const formatSize = (bytes: number) => {
 
 const formatTime = (value?: string) => (value ? dayjs(value).format('MM-DD HH:mm') : '—');
 
+const getFileExtension = (file: DriveFile) => {
+  const name = file.fileName.toLowerCase();
+  const dot = name.lastIndexOf('.');
+  return dot >= 0 ? name.slice(dot + 1) : '';
+};
+
+const getFileIcon = (file: DriveFile) => {
+  const ext = getFileExtension(file);
+  const type = (file.fileType || '').toLowerCase();
+  if (type.startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) {
+    return FileImageOutlined;
+  }
+  if (type.includes('pdf') || ext === 'pdf') return FilePdfOutlined;
+  if (['doc', 'docx'].includes(ext) || type.includes('word')) return FileWordOutlined;
+  if (['xls', 'xlsx', 'csv'].includes(ext) || type.includes('sheet') || type.includes('excel')) {
+    return FileExcelOutlined;
+  }
+  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return FileZipOutlined;
+  return FileOutlined;
+};
+
+const toggleItemSelection = (key: string, checked: boolean) => {
+  if (checked) {
+    if (!selectedKeys.value.includes(key)) {
+      selectedKeys.value = [...selectedKeys.value, key];
+    }
+    return;
+  }
+  selectedKeys.value = selectedKeys.value.filter((item) => item !== key);
+};
+
+const isInteractiveGridTarget = (target: HTMLElement) =>
+  Boolean(
+    target.closest('.ant-checkbox-wrapper')
+    || target.closest('.ant-checkbox')
+    || target.closest('.item-grid-action')
+    || target.closest('.ant-dropdown-trigger')
+    || target.closest('a'),
+  );
+
+const handleGridItemClick = (item: ExplorerItem, event: MouseEvent) => {
+  if (isInteractiveGridTarget(event.target as HTMLElement)) return;
+  if (item.kind === 'folder') {
+    void navigateTo(item.locationKey);
+  }
+};
+
+const handleGridFileAction = (file: DriveFile) => (event: { key: string }) => {
+  onFileAction(file, event);
+};
+
+const handleGridFolderAction = (item: ExplorerItem & { kind: 'folder' }) => (event: { key: string }) => {
+  if (!item.folderId) return;
+  const folder = folders.value.find((entry) => entry.id === item.folderId);
+  if (!folder) return;
+  if (event.key === 'rename') {
+    openRenameFolder(folder);
+    return;
+  }
+  if (event.key === 'delete') {
+    handleDeleteFolder(folder);
+  }
+};
+
+const resolveBatchDownloadPayload = (): DriveBatchDownloadPayload | null => {
+  if (!workspaceId.value || !selectedKeys.value.length) return null;
+
+  const ids: string[] = [];
+  const folderIds: string[] = [];
+  let uncategorized = false;
+  let unlinkedOnly = false;
+
+  for (const key of selectedKeys.value) {
+    if (key.startsWith('file:')) {
+      ids.push(key.replace('file:', ''));
+      continue;
+    }
+    if (key.startsWith('folder:')) {
+      folderIds.push(key.replace('folder:', ''));
+      continue;
+    }
+    if (key === 'location:uncategorized') {
+      uncategorized = true;
+      continue;
+    }
+    if (key === 'location:unlinked') {
+      unlinkedOnly = true;
+    }
+  }
+
+  return {
+    workspaceId: workspaceId.value,
+    ids: ids.length ? ids : undefined,
+    folderIds: folderIds.length ? folderIds : undefined,
+    uncategorized: uncategorized || undefined,
+    unlinkedOnly: unlinkedOnly || undefined,
+  };
+};
+
+const resolveSelectedFileIds = async (): Promise<string[]> => {
+  const payload = resolveBatchDownloadPayload();
+  if (!payload) return [];
+  const fileIds = payload.ids ?? [];
+  if (!payload.folderIds?.length && !payload.uncategorized && !payload.unlinkedOnly) {
+    return fileIds;
+  }
+  // 文件夹/虚拟目录仍需要解析文件 id 供批量分享
+  if (payload.folderIds?.length) {
+    for (const folderId of payload.folderIds) {
+      const scopedIds = [folderId, ...getDriveFolderDescendantIds(folderId, folders.value)];
+      for (const targetFolderId of scopedIds) {
+        const folderFiles = await listDriveFiles({
+          workspaceId: workspaceId.value!,
+          folderId: targetFolderId,
+        });
+        folderFiles.forEach((file) => fileIds.push(file.id));
+      }
+    }
+  }
+  if (payload.uncategorized) {
+    const uncategorized = await listDriveFiles({
+      workspaceId: workspaceId.value!,
+      uncategorized: true,
+    });
+    uncategorized.forEach((file) => fileIds.push(file.id));
+  }
+  if (payload.unlinkedOnly) {
+    const unlinked = await listDriveFiles({
+      workspaceId: workspaceId.value!,
+      unlinkedOnly: true,
+    });
+    unlinked.forEach((file) => fileIds.push(file.id));
+  }
+  return [...new Set(fileIds)];
+};
+
 const buildFileQuery = () => {
   if (!workspaceId.value) return null;
   const query: {
@@ -387,18 +807,29 @@ const buildFileQuery = () => {
     uncategorized?: boolean;
     noteId?: string;
     unlinkedOnly?: boolean;
+    keyword?: string;
   } = { workspaceId: workspaceId.value };
 
   if (filterNoteId.value) {
     query.noteId = filterNoteId.value;
   }
 
-  if (activeFolderKey.value === 'uncategorized') {
+  const q = keyword.value.trim();
+  if (q) {
+    query.keyword = q;
+    return query;
+  }
+
+  if (currentLocationKey.value === 'root') {
+    return null;
+  }
+
+  if (currentLocationKey.value === 'uncategorized') {
     query.uncategorized = true;
-  } else if (activeFolderKey.value === 'unlinked') {
+  } else if (currentLocationKey.value === 'unlinked') {
     query.unlinkedOnly = true;
-  } else if (activeFolderKey.value.startsWith('folder:')) {
-    query.folderId = activeFolderKey.value.replace('folder:', '');
+  } else if (currentLocationKey.value.startsWith('folder:')) {
+    query.folderId = currentLocationKey.value.replace('folder:', '');
   }
 
   return query;
@@ -423,13 +854,12 @@ const loadFiles = async () => {
 const loadFolders = async () => {
   if (!workspaceId.value) {
     folders.value = [];
-    folderExpandedKeys.value = [];
     return;
   }
   foldersLoading.value = true;
   try {
-    folders.value = await listDriveFolders(workspaceId.value);
-    folderExpandedKeys.value = collectDriveFolderTreeKeys(buildDriveFolderTree(folders.value));
+    const q = keyword.value.trim();
+    folders.value = await listDriveFolders(workspaceId.value, q || undefined);
   } catch (error: any) {
     message.error(error?.message || '加载文件夹失败');
   } finally {
@@ -479,31 +909,36 @@ const refreshAll = async () => {
 };
 
 const onWorkspaceChange = async () => {
-  activeFolderKey.value = 'all';
+  currentLocationKey.value = 'root';
   filterNoteId.value = undefined;
+  keyword.value = '';
   clearSelection();
   await refreshAll();
 };
 
-const onFolderMenuClick = async ({ key }: { key: string }) => {
-  activeFolderKey.value = key;
+const navigateTo = async (key: DriveLocationKey) => {
+  if (key === currentLocationKey.value) return;
+  currentLocationKey.value = key;
+  clearSelection();
   await loadFiles();
 };
 
-const onFolderTreeSelect = async (keys: (string | number)[]) => {
-  const key = String(keys[0] ?? '');
-  if (!key.startsWith('folder:')) return;
-  activeFolderKey.value = key;
-  await loadFiles();
-};
-
-const onFolderTreeExpand = (keys: (string | number)[]) => {
-  folderExpandedKeys.value = keys.map(String);
+const goBack = async () => {
+  if (currentLocationKey.value === 'root') return;
+  if (currentLocationKey.value === 'uncategorized' || currentLocationKey.value === 'unlinked') {
+    await navigateTo('root');
+    return;
+  }
+  if (currentLocationKey.value.startsWith('folder:')) {
+    const folderId = currentLocationKey.value.replace('folder:', '');
+    const parentId = getDriveFolderParentId(folderId, folders.value);
+    await navigateTo(parentId ? `folder:${parentId}` : 'root');
+  }
 };
 
 const currentUploadFolderId = () => {
-  if (activeFolderKey.value.startsWith('folder:')) {
-    return activeFolderKey.value.replace('folder:', '');
+  if (currentLocationKey.value.startsWith('folder:')) {
+    return currentLocationKey.value.replace('folder:', '');
   }
   return undefined;
 };
@@ -577,21 +1012,22 @@ const handleDelete = (file: DriveFile) => {
     onOk: async () => {
       await deleteAttachment(file.id);
       message.success('已删除');
-      selectedFileIds.value = selectedFileIds.value.filter((id) => id !== file.id);
+      selectedKeys.value = selectedKeys.value.filter((key) => key !== `file:${file.id}`);
       await refreshAll();
     },
   });
 };
 
 const clearSelection = () => {
-  selectedFileIds.value = [];
+  selectedKeys.value = [];
 };
 
 const handleBatchDownload = async () => {
-  if (!selectedFileIds.value.length) return;
+  const payload = resolveBatchDownloadPayload();
+  if (!payload) return;
   batchDownloading.value = true;
   try {
-    await batchDownloadDriveFiles(selectedFileIds.value);
+    await batchDownloadDriveSelection(payload);
     message.success('下载已开始');
   } catch (error: any) {
     message.error(error?.message || '批量下载失败');
@@ -600,21 +1036,36 @@ const handleBatchDownload = async () => {
   }
 };
 
+const openBatchShareModal = async () => {
+  if (!selectedKeys.value.length) return;
+  try {
+    const fileIds = await resolveSelectedFileIds();
+    if (!fileIds.length) {
+      message.warning('所选项目中没有可分享的文件');
+      return;
+    }
+    batchShareFileIds.value = fileIds;
+    batchShareModalOpen.value = true;
+  } catch (error: any) {
+    message.error(error?.message || '解析所选文件失败');
+  }
+};
+
 const openCreateFolder = (parentId?: string | null) => {
   folderModalMode.value = 'create';
   folderNameInput.value = '';
   editingFolderId.value = undefined;
-  createFolderParentId.value = parentId ?? null;
+  createFolderParentId.value = parentId ?? currentParentId.value;
   folderModalOpen.value = true;
 };
 
 const handleCreateMenu = ({ key }: { key: string }) => {
   if (key === 'folder') {
-    openCreateFolder(null);
+    openCreateFolder(currentParentId.value);
     return;
   }
-  if (key === 'subfolder' && selectedFolder.value) {
-    openCreateFolder(selectedFolder.value.id);
+  if (key === 'subfolder' && currentFolder.value) {
+    openCreateFolder(currentFolder.value.id);
   }
 };
 
@@ -647,23 +1098,24 @@ const openContextMenu = (event: MouseEvent, node: DriveTreeContextNode) => {
   contextMenu.open = true;
 };
 
-const onTreeBodyContextMenu = (event: MouseEvent) => {
+const onExplorerBodyContextMenu = (event: MouseEvent) => {
   const target = event.target as HTMLElement;
-  if (target.closest('.ant-tree-node-content-wrapper')) return;
+  if (target.closest('.explorer-item') || target.closest('.ant-table-row')) {
+    return;
+  }
   event.preventDefault();
   if (!workspaceId.value) return;
+  if (currentLocationKey.value === 'uncategorized' || currentLocationKey.value === 'unlinked') return;
   openContextMenu(event, { kind: 'root' });
 };
 
-const onFolderTreeRightClick = ({ event, node }: { event: MouseEvent; node: { key: string | number } }) => {
+const onExplorerItemContextMenu = (event: MouseEvent, item: ExplorerItem) => {
+  if (item.kind !== 'folder' || item.virtual || !item.folderId) return;
   event.preventDefault();
   event.stopPropagation();
-  const key = String(node.key);
-  if (!key.startsWith('folder:')) return;
-  const folderId = key.replace('folder:', '');
-  const folder = folders.value.find((item) => item.id === folderId);
-  if (!folder) return;
-  openContextMenu(event, { kind: 'folder', folder });
+  const folderRecord = folders.value.find((entry) => entry.id === item.folderId);
+  if (!folderRecord) return;
+  openContextMenu(event, { kind: 'folder', folder: folderRecord });
 };
 
 const onContextMenuSelect = async ({ key }: { key: string }) => {
@@ -671,7 +1123,7 @@ const onContextMenuSelect = async ({ key }: { key: string }) => {
   const node = contextMenu.node;
   if (!node) return;
   if (key === 'new-folder') {
-    openCreateFolder(null);
+    openCreateFolder(currentParentId.value);
     return;
   }
   if (node.kind !== 'folder') return;
@@ -691,7 +1143,7 @@ const onContextMenuSelect = async ({ key }: { key: string }) => {
 const onDocumentPointerDown = (event: MouseEvent) => {
   if (!contextMenu.open) return;
   const target = event.target as HTMLElement;
-  if (target.closest('.tree-context-menu') || target.closest('.ant-dropdown-menu')) return;
+  if (target.closest('.explorer-context-menu') || target.closest('.ant-dropdown-menu')) return;
   closeContextMenu();
 };
 
@@ -711,9 +1163,10 @@ const handleDeleteFolder = (folder: DriveFolder) => {
     cancelText: '取消',
     onOk: async () => {
       await deleteDriveFolder(folder.id);
-      if (activeFolderKey.value === `folder:${folder.id}`) {
-        activeFolderKey.value = 'all';
+      if (currentLocationKey.value === `folder:${folder.id}`) {
+        currentLocationKey.value = 'root';
       }
+      selectedKeys.value = selectedKeys.value.filter((key) => key !== `folder:${folder.id}`);
       message.success('文件夹已删除');
       await refreshAll();
     },
@@ -759,6 +1212,18 @@ const refreshDriveForCurrentWorkspace = async () => {
   if (!workspaceId.value) return;
   await refreshAll();
 };
+
+watch(fileViewMode, (mode) => {
+  localStorage.setItem(FILE_VIEW_STORAGE_KEY, mode);
+});
+
+watch(
+  () => keyword.value,
+  async () => {
+    if (!workspaceId.value) return;
+    await Promise.all([loadFiles(), loadFolders()]);
+  },
+);
 
 watch(
   () => route.query.workspace,
@@ -814,30 +1279,190 @@ onUnmounted(() => {
   margin-top: 4px;
 }
 
-.drive-layout {
-  display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
+.drive-explorer-card :deep(.ant-card-body) {
+  padding: 12px 16px 16px;
 }
 
-.folder-card :deep(.ant-card-body) {
-  padding: 12px;
-}
-
-.tree-toolbar {
-  margin-bottom: 8px;
-}
-
-.tree-head {
+.explorer-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.explorer-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.view-toggle :deep(.ant-radio-button-wrapper) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  padding: 0;
+  line-height: 1;
+}
+
+.view-toggle :deep(.ant-radio-button-wrapper > span:not(.ant-radio-button)) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  line-height: 0;
+}
+
+.view-toggle :deep(.ant-radio-button-wrapper .anticon) {
+  display: block;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.explorer-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.explorer-back {
+  flex-shrink: 0;
+  color: var(--noto-text-muted);
+}
+
+.explorer-back:not(:disabled):hover {
+  color: var(--noto-accent-deep, #0891b2);
+}
+
+.explorer-breadcrumb {
+  min-width: 0;
+}
+
+.explorer-breadcrumb :deep(.ant-breadcrumb-link),
+.explorer-breadcrumb :deep(.ant-breadcrumb-link a) {
+  font-size: 13px;
+}
+
+.explorer-items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
   gap: 8px;
 }
 
-.tree-body {
-  min-height: 120px;
+.explorer-items-group {
+  display: contents;
+}
+
+.explorer-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 34px 12px 12px;
+  border: 1px solid var(--noto-border-soft, #eef2f7);
+  border-radius: 10px;
+  background: var(--noto-surface, #fff);
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.explorer-item--folder {
+  cursor: pointer;
+}
+
+.explorer-item:hover,
+.explorer-item.is-selected {
+  border-color: var(--noto-accent, #22d3ee);
+  background: var(--noto-pastel-blue, rgba(8, 145, 178, 0.06));
+}
+
+.item-select-check {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  z-index: 3;
+  margin: 0;
+}
+
+.item-select-check :deep(.ant-checkbox) {
+  top: 0;
+}
+
+.item-grid-action {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  color: var(--noto-text-muted);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.explorer-item:hover .item-grid-action,
+.explorer-item.is-selected .item-grid-action {
+  opacity: 1;
+}
+
+.item-grid-action:hover {
+  color: var(--noto-accent-deep, #0891b2);
+  background: var(--noto-pastel-blue, rgba(8, 145, 178, 0.08));
+}
+
+.explorer-item-icon {
+  font-size: 36px;
+  line-height: 1;
+  color: var(--noto-accent-deep, #0891b2);
+}
+
+.explorer-item-icon--folder {
+  font-size: 34px;
+}
+
+.explorer-item-name {
+  width: 100%;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--noto-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+a.explorer-item-name:hover {
+  color: var(--noto-accent-deep, #0891b2);
+}
+
+.explorer-item-meta {
+  font-size: 11px;
+  color: var(--noto-text-muted);
+  font-family: var(--noto-font-mono);
+}
+
+.explorer-item-linked {
+  font-size: 11px;
+  color: var(--noto-accent-deep, #0891b2);
+}
+
+.list-item-icon {
+  margin-right: 8px;
+  color: var(--noto-accent-deep, #0891b2);
+}
+
+.list-item-icon--folder {
+  font-size: 14px;
+}
+
+.folder-link {
+  color: var(--noto-text);
+  font-weight: 500;
 }
 
 .context-menu-anchor {
@@ -847,68 +1472,10 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
-.folder-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--noto-text);
-}
-
-.folder-menu-fixed {
-  margin-bottom: 4px;
-}
-
-.folder-tree {
-  margin-top: 4px;
-}
-
-.folder-tree :deep(.ant-tree-node-content-wrapper) {
-  border-radius: 8px;
-}
-
-.folder-tree :deep(.ant-tree-title) {
-  font-size: 13px;
-}
-
-.folder-empty {
-  margin: 8px 0 0;
-  font-size: 12px;
-  color: var(--noto-text-muted);
-}
-
 .folder-modal-hint {
   margin: 10px 0 0;
   font-size: 12px;
   color: var(--noto-text-muted);
-}
-
-.folder-menu {
-  border-inline-end: none !important;
-}
-
-.folder-menu :deep(.ant-menu-item) {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 0;
-  width: 100%;
-  border-radius: 8px;
-}
-
-.folder-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.folder-count {
-  font-size: 11px;
-  color: var(--noto-text-muted);
-  font-family: var(--noto-font-mono);
-}
-
-.drive-table-card :deep(.ant-card-body) {
-  padding-top: 8px;
 }
 
 .table-toolbar {
@@ -948,9 +1515,17 @@ onUnmounted(() => {
   font-size: 13px;
 }
 
-@media (max-width: 960px) {
-  .drive-layout {
-    grid-template-columns: 1fr;
+@media (max-width: 640px) {
+  .explorer-items-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+
+  .explorer-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .item-grid-action {
+    opacity: 1;
   }
 }
 </style>

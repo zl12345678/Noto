@@ -20,7 +20,7 @@
                 <a-menu @click="handleCreateMenu">
                   <a-menu-item key="folder">新建分组</a-menu-item>
                   <a-menu-item key="doc">新建文档</a-menu-item>
-                  <a-menu-item key="import">导入剪藏</a-menu-item>
+                  <a-menu-item key="import">导入文档</a-menu-item>
                 </a-menu>
               </template>
             </a-dropdown>
@@ -49,10 +49,24 @@
       <a-spin :spinning="loading">
         <div
           class="tree-body"
+          :class="{ 'tree-body--virtual': useVirtualTree }"
           @contextmenu="onTreeBodyContextMenu"
         >
+          <p v-if="useVirtualTree && activeFilter === 'all'" class="tree-virtual-hint">
+            文档较多，已启用虚拟列表；拖拽排序暂不可用，可用搜索缩小范围
+          </p>
+          <NoteDocTreeVirtual
+            v-if="useVirtualTree && displayTreeData.length > 0"
+            ref="virtualTreeRef"
+            :model-value="displayTreeData"
+            :selected-keys="selectedTreeKeys"
+            :expanded-keys="expandedTreeKeys"
+            @update:expanded-keys="expandedTreeKeys = $event"
+            @select="handleTreeSelect"
+            @contextmenu="onTreeRightClick"
+          />
           <NoteDocTree
-            v-if="treeData.length > 0"
+            v-else-if="treeData.length > 0"
             v-model="displayTreeData"
             :selected-keys="selectedTreeKeys"
             :expanded-keys="expandedTreeKeys"
@@ -74,7 +88,7 @@
                 <a-menu @click="handleCreateMenu">
                   <a-menu-item key="folder">新建分组</a-menu-item>
                   <a-menu-item key="doc">新建文档</a-menu-item>
-                  <a-menu-item key="import">导入剪藏</a-menu-item>
+                  <a-menu-item key="import">导入文档</a-menu-item>
                 </a-menu>
               </template>
             </a-dropdown>
@@ -94,14 +108,37 @@
 
     <section class="editor-pane">
       <a-spin :spinning="detailLoading" wrapper-class-name="editor-spin">
-        <div v-if="note" class="editor-shell">
+        <div v-if="note" class="editor-shell" :class="{ 'editor-shell--read': contentViewMode === 'read' }">
           <header class="editor-topbar">
             <div class="editor-status">
-              <span v-if="saving" class="save-badge">保存中...</span>
-              <span v-else-if="isDirty" class="dirty-badge">未保存</span>
-              <span v-else-if="autoSavedVisible" class="saved-badge">已自动保存</span>
+              <template v-if="contentViewMode === 'edit'">
+                <span v-if="saving" class="save-badge">保存中...</span>
+                <span v-else-if="isDirty" class="dirty-badge">未保存</span>
+                <span v-else-if="autoSavedVisible" class="saved-badge">已自动保存</span>
+              </template>
+              <span v-else class="read-mode-badge">阅读模式</span>
             </div>
             <div class="editor-actions">
+              <a-button
+                v-if="contentViewMode === 'read'"
+                type="text"
+                size="small"
+                :class="{ 'ai-toggle--active': outlineOpen }"
+                @click="toggleOutlinePanel"
+              >
+                <MenuOutlined />
+                <span class="action-label">大纲</span>
+              </a-button>
+              <a-button
+                type="text"
+                size="small"
+                :class="{ 'ai-toggle--active': contentViewMode === 'read' }"
+                @click="toggleContentViewMode"
+              >
+                <ReadOutlined v-if="contentViewMode === 'edit'" />
+                <EditOutlined v-else />
+                <span class="action-label">{{ contentViewMode === 'read' ? '编辑' : '阅读' }}</span>
+              </a-button>
               <a-button
                 type="text"
                 size="small"
@@ -187,8 +224,10 @@
                 <span class="action-label">分享</span>
               </a-button>
               <a-divider type="vertical" class="topbar-divider" />
-              <a-button type="text" size="small" @click="syncFromNote" :loading="saving">恢复</a-button>
-              <a-button type="primary" size="small" @click="saveDetail" :loading="saving" :disabled="!isDirty">保存</a-button>
+              <template v-if="contentViewMode === 'edit'">
+                <a-button type="text" size="small" @click="syncFromNote" :loading="saving">恢复</a-button>
+                <a-button type="primary" size="small" @click="saveDetail" :loading="saving" :disabled="!isDirty">保存</a-button>
+              </template>
             </div>
           </header>
 
@@ -211,32 +250,89 @@
 
           <div class="editor-title-row">
             <a-input
+              v-if="contentViewMode === 'edit'"
               v-model:value="formState.title"
               class="title-field"
               :bordered="false"
               placeholder="无标题文档"
             />
+            <h1 v-else class="read-title">{{ formState.title || '无标题文档' }}</h1>
           </div>
 
-          <div class="editor-canvas">
-            <MarkdownEditor
-              ref="markdownEditorRef"
-              v-model="formState.content"
-              :note-id="activeNoteId || undefined"
-              height="100%"
-              :scroll-to-start="contentHighlightRange.start"
-              :scroll-to-end="contentHighlightRange.end"
-              @save="() => saveDetail()"
+          <div
+            v-if="notePerfHintVisible"
+            class="note-perf-bar"
+          >
+            <span>正文约 {{ noteContentSizeLabel }}，已自动关闭分栏预览以减轻卡顿；建议拆成多篇或分段编辑。</span>
+            <a-button type="link" size="small" @click="dismissNotePerfHint">知道了</a-button>
+          </div>
+
+          <div
+            class="editor-canvas"
+            :class="{
+              'editor-canvas--read': contentViewMode === 'read',
+              'editor-canvas--with-outline': outlineVisible && !outlineDrawerMode,
+            }"
+          >
+            <div class="editor-canvas-main">
+              <MarkdownEditor
+                v-if="contentViewMode === 'edit'"
+                ref="markdownEditorRef"
+                v-model="formState.content"
+                :note-id="activeNoteId || undefined"
+                height="100%"
+                :preview="editorSplitPreview"
+                :scroll-to-start="contentHighlightRange.start"
+                :scroll-to-end="contentHighlightRange.end"
+                @save="() => saveDetail()"
+              />
+              <div v-else ref="readScrollRef" class="read-scroll">
+                <LazyReadPreview
+                  v-if="useLazyReadPreview"
+                  ref="readPreviewRef"
+                  class="read-body"
+                  :model-value="formState.content || '暂无正文'"
+                  :enable-heading-collapse="readHeadingCollapse"
+                  @headings-ready="onReadPreviewHeadingsReady"
+                />
+                <SafeMdPreview
+                  v-else
+                  ref="readPreviewRef"
+                  class="read-body"
+                  :model-value="formState.content || '暂无正文'"
+                  :enable-heading-collapse="readHeadingCollapse"
+                  @headings-ready="onReadPreviewHeadingsReady"
+                />
+              </div>
+              <SelectionFloatingToolbar
+                v-if="note && aiEnabled && contentViewMode === 'edit'"
+                :note-id="note.id"
+                :workspace-id="note.workspaceId"
+                :title="formState.title"
+                :content="formState.content"
+                :ai-enabled="aiEnabled"
+                @replace="replaceEditorSelection"
+                @todo-created="onSelectionTodoCreated"
+              />
+            </div>
+            <div
+              v-if="outlineVisible && outlineDrawerMode"
+              class="outline-drawer-backdrop"
+              @click="toggleOutlinePanel"
             />
-            <SelectionFloatingToolbar
-              v-if="note && aiEnabled"
-              :note-id="note.id"
-              :workspace-id="note.workspaceId"
-              :title="formState.title"
-              :content="formState.content"
-              :ai-enabled="aiEnabled"
-              @replace="replaceEditorSelection"
-              @todo-created="onSelectionTodoCreated"
+            <NoteOutlinePanel
+              v-if="outlineVisible"
+              ref="outlinePanelRef"
+              :items="outlineHeadings"
+              :max-level="outlineMaxLevel"
+              :active-heading-index="outlineActiveIndex"
+              :search-keyword="outlineSearch"
+              :drawer="outlineDrawerMode"
+              :show-insert-template="false"
+              @close="toggleOutlinePanel"
+              @select="onOutlineSelect"
+              @update:max-level="onOutlineMaxLevelChange"
+              @update:search-keyword="outlineSearch = $event"
             />
           </div>
         </div>
@@ -262,7 +358,7 @@
                 <a-menu @click="handleCreateMenu">
                   <a-menu-item key="folder">新建子分组</a-menu-item>
                   <a-menu-item key="doc">新建文档</a-menu-item>
-                  <a-menu-item key="import">导入剪藏</a-menu-item>
+                  <a-menu-item key="import">导入文档</a-menu-item>
                 </a-menu>
               </template>
             </a-dropdown>
@@ -311,7 +407,7 @@
                   <a-menu @click="handleCreateMenu">
                     <a-menu-item key="folder">新建子分组</a-menu-item>
                     <a-menu-item key="doc">新建文档</a-menu-item>
-                    <a-menu-item key="import">导入剪藏</a-menu-item>
+                    <a-menu-item key="import">导入文档</a-menu-item>
                   </a-menu>
                 </template>
               </a-dropdown>
@@ -325,7 +421,7 @@
             <p class="editor-empty-hint">选左侧文档，或新建一篇</p>
             <a-space wrap>
               <a-button type="primary" @click="void createDocumentUnder(null, null)">新建文档</a-button>
-              <a-button @click="importModalOpen = true">导入剪藏</a-button>
+              <a-button @click="openImportModal(createAnchor.value)">导入文档</a-button>
             </a-space>
           </div>
         </div>
@@ -333,7 +429,8 @@
 
       <div v-if="note" class="side-drawer-root" :class="{ 'is-open': aiPanelOpen }">
         <div class="side-drawer-backdrop" @click="closeAiPanel" />
-        <aside class="side-drawer-panel">
+        <aside class="side-drawer-panel" :style="aiDrawerStyle">
+          <DrawerResizeHandle @resize="drawerLayout.resizeAi" />
           <NoteAiPanel
             ref="aiPanelRef"
             :note-id="note.id"
@@ -447,6 +544,9 @@
       v-model:open="importModalOpen"
       :workspaces="workspaces"
       :default-workspace-id="currentWorkspaceId"
+      :default-folder-id="importDefaultFolderId"
+      :folder-options="folderOptions"
+      @imported="handleNotesImported"
     />
 
     <ShareLinkModal
@@ -501,12 +601,20 @@ import {
 import { storeToRefs } from 'pinia';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { message, Modal } from 'ant-design-vue';
-import { DownOutlined, LinkOutlined, PaperClipOutlined, QuestionCircleOutlined, ShareAltOutlined, ThunderboltOutlined } from '@ant-design/icons-vue';
+import { DownOutlined, EditOutlined, LinkOutlined, MenuOutlined, PaperClipOutlined, QuestionCircleOutlined, ReadOutlined, ShareAltOutlined, ThunderboltOutlined } from '@ant-design/icons-vue';
 import dayjs from 'dayjs';
 import NoteDocTree from '../../components/note/NoteDocTree.vue';
+import NoteDocTreeVirtual from '../../components/note/NoteDocTreeVirtual.vue';
+import type { NoteTreeNode } from '../../components/note/NoteDocTree.vue';
+import { countFlatTreeNodes, VIRTUAL_TREE_THRESHOLD } from '../../utils/noteTreeFlatten';
 import EmptyState from '../../components/common/EmptyState.vue';
+import SafeMdPreview from '../../components/common/SafeMdPreview.vue';
+import LazyReadPreview from '../../components/note/LazyReadPreview.vue';
+import NoteOutlinePanel from '../../components/note/NoteOutlinePanel.vue';
+import { useDebouncedOutline } from '../../composables/useDebouncedOutline';
 import SelectionFloatingToolbar from '../../components/note/SelectionFloatingToolbar.vue';
 import SidebarResizeHandle from '../../components/layout/SidebarResizeHandle.vue';
+import DrawerResizeHandle from '../../components/layout/DrawerResizeHandle.vue';
 
 const MarkdownEditor = defineAsyncComponent(() => import('../../components/editor/MarkdownEditor.vue'));
 const NoteAiPanel = defineAsyncComponent(() => import('../../components/note/NoteAiPanel.vue'));
@@ -516,6 +624,17 @@ const NoteImportModal = defineAsyncComponent(() => import('../../components/note
 const TodoExtractReviewModal = defineAsyncComponent(() => import('../../components/todo/TodoExtractReviewModal.vue'));
 import ShareLinkModal from '../../components/share/ShareLinkModal.vue';
 import { autoExtractSessionKey, isMeetingLikeNote } from '../../utils/meetingNote';
+import {
+  formatContentSizeHint,
+  isHugeNoteContent,
+  noteContentCharCount,
+  shouldDisableEditorPreview,
+} from '../../utils/noteContentSize';
+import {
+  activeHeadingIndexAtOffset,
+  findHeadingBySlug,
+  type MarkdownHeadingItem,
+} from '../../utils/markdownOutline';
 import { createFolder, deleteFolder, listFolders, patchFolderTree, updateFolder, type Folder } from '../../api/folders';
 import {
   confirmExtractTodosByAi,
@@ -548,6 +667,7 @@ import {
 import { listTags, type Tag } from '../../api/tags';
 import { useAiPrefsStore } from '../../store/aiPrefs';
 import { useSidebarLayoutStore } from '../../store/sidebarLayout';
+import { useDrawerLayoutStore } from '../../store/drawerLayout';
 import { useTodoSummaryStore } from '../../store/todoSummary';
 import { useWorkspaceStore } from '../../store/workspace';
 import { useModuleTabsStore } from '../../store/moduleTabs';
@@ -591,6 +711,7 @@ type ContextMenuItem = { key: string; label?: string; danger?: boolean; divider?
 const router = useRouter();
 const route = useRoute();
 const sidebarLayout = useSidebarLayoutStore();
+const drawerLayout = useDrawerLayoutStore();
 const todoSummary = useTodoSummaryStore();
 const moduleTabs = useModuleTabsStore();
 
@@ -635,15 +756,67 @@ const attachmentCount = ref(0);
 const aiPanelRef = ref<{ runSummarizeQuiet?: () => Promise<{ summary?: string } | void> } | null>(null);
 const markdownEditorRef = ref<{
   getSelectedText?: () => string;
-  scrollToRange?: (start: number, end: number) => void;
+  scrollToRange?: (
+    start: number,
+    end?: number,
+    options?: { clearSelection?: boolean },
+  ) => void;
   insertSnippet?: (text: string) => void;
+  getScrollAnchorOffset?: () => number;
 } | null>(null);
+type ReadPreviewExpose = {
+  scrollToHeadingIndex?: (index: number) => void;
+  expandForHeadingIndex?: (index: number) => void;
+  scrollToHeadingSlug?: (slug: string) => void;
+  attachScrollSpy?: (root: HTMLElement, cb: (idx: number) => void) => () => void;
+  getScrollAnchorOffset?: (scrollRoot: HTMLElement) => number;
+  scrollToAnchorOffset?: (scrollRoot: HTMLElement, offset: number) => boolean;
+};
+
+const readPreviewRef = ref<ReadPreviewExpose | null>(null);
+const readScrollRef = ref<HTMLElement | null>(null);
+const virtualTreeRef = ref<{ scrollToKey?: (key: string) => void } | null>(null);
+const outlinePanelRef = ref<{ focusPanel?: () => void; scrollListToActive?: () => void } | null>(null);
+const OUTLINE_OPEN_KEY = 'noto-note-outline-open';
+const OUTLINE_MAX_LEVEL_KEY = 'noto-note-outline-max-level';
+const OUTLINE_NARROW_PX = 960;
+
+function readOutlineOpen(): boolean {
+  return localStorage.getItem(OUTLINE_OPEN_KEY) === '1';
+}
+
+function readOutlineMaxLevel(): number {
+  const raw = localStorage.getItem(OUTLINE_MAX_LEVEL_KEY);
+  const n = raw ? Number(raw) : 3;
+  return Number.isFinite(n) && n >= 1 && n <= 6 ? n : 3;
+}
+
+const outlineOpen = ref(readOutlineOpen());
+const outlineMaxLevel = ref(readOutlineMaxLevel());
+const outlineSearch = ref('');
+const outlineActiveIndex = ref(-1);
+const outlineDrawerMode = ref(false);
 const saving = ref(false);
 const folderSaving = ref(false);
 const propsSaving = ref(false);
 const searchKeyword = ref('');
 const folderModalOpen = ref(false);
 const importModalOpen = ref(false);
+/** 打开导入弹窗时预填的分组 id，关闭弹窗后清空 */
+const importDefaultFolderId = ref<string | null>(null);
+type ContentViewMode = 'edit' | 'read';
+const CONTENT_VIEW_STORAGE_KEY = 'noto-note-content-view-mode';
+
+function readStoredContentViewMode(): ContentViewMode {
+  const raw = localStorage.getItem(CONTENT_VIEW_STORAGE_KEY);
+  return raw === 'read' ? 'read' : 'edit';
+}
+
+const contentViewMode = ref<ContentViewMode>(readStoredContentViewMode());
+/** 大纲仅在阅读模式展示 */
+const outlineVisible = computed(
+  () => contentViewMode.value === 'read' && outlineOpen.value,
+);
 const folderModalMode = ref<'create' | 'rename'>('create');
 const propsModalOpen = ref(false);
 const folderForm = reactive({ name: '', parentId: null as string | null, folderId: '' });
@@ -656,7 +829,8 @@ const expandedTreeKeys = ref<string[]>([]);
 const displayTreeData = ref<TreeNodeData[]>([]);
 const treeDropInFlight = ref(false);
 const directoryFolderId = ref<string | null>(null);
-const savedSnapshot = ref('');
+const savedTitle = ref('');
+const savedContent = ref('');
 const autoSavedVisible = ref(false);
 const writeNudgeVisible = ref(false);
 const nudgeSummarizing = ref(false);
@@ -676,6 +850,14 @@ const formState = reactive({
   content: '',
 });
 
+const contentForOutline = computed(() => formState.content);
+const { allHeadings, filteredHeadings } = useDebouncedOutline(
+  contentForOutline,
+  outlineMaxLevel,
+  outlineSearch,
+);
+const outlineHeadings = filteredHeadings;
+
 const currentWorkspaceName = computed(() => {
   const workspace = workspaces.value.find((item) => item.id === currentWorkspaceId.value);
   return workspace?.name || '知识库';
@@ -691,6 +873,17 @@ const folderOptions = computed(() => folders.value.map((item) => ({ label: item.
 const tagOptions = computed(() => tags.value.map((item) => ({ label: item.name, value: item.id })));
 const activeNoteId = computed(() => (typeof route.params.id === 'string' ? route.params.id : ''));
 const treeCollapsed = computed(() => sidebarLayout.treeCollapsed);
+const useVirtualTree = computed(() => {
+  if (!displayTreeData.value.length) return false;
+  return (
+    countFlatTreeNodes(displayTreeData.value as NoteTreeNode[], expandedTreeKeys.value) >
+    VIRTUAL_TREE_THRESHOLD
+  );
+});
+const aiDrawerStyle = computed(() => ({
+  width: `${drawerLayout.aiWidth}px`,
+  maxWidth: 'calc(100% - 16px)',
+}));
 const treePaneStyle = computed(() => ({
   width: `${sidebarLayout.treeWidth}px`,
 }));
@@ -911,13 +1104,111 @@ watch(treeData, (val) => {
   displayTreeData.value = cloneTreeSnapshot(val);
 }, { immediate: true });
 
+const noteContentChars = computed(() => noteContentCharCount(formState.content));
+
+const noteContentSizeLabel = computed(() => formatContentSizeHint(noteContentChars.value));
+
+const editorSplitPreview = computed(
+  () => !shouldDisableEditorPreview(formState.content),
+);
+
+/** 阅读模式始终启用标题折叠（含超长文） */
+const readHeadingCollapse = computed(() => true);
+
+const useLazyReadPreview = computed(() => formState.content.length >= 100_000);
+
+const syncOutlineDrawerMode = () => {
+  outlineDrawerMode.value =
+    typeof window !== 'undefined' && window.innerWidth < OUTLINE_NARROW_PX;
+};
+
+const closeSideDrawersForOutline = () => {
+  aiPanelOpen.value = false;
+  attachmentDrawerOpen.value = false;
+  contextDrawerOpen.value = false;
+};
+
+const toggleOutlinePanel = () => {
+  if (contentViewMode.value !== 'read') return;
+  if (!outlineOpen.value) {
+    closeSideDrawersForOutline();
+    syncOutlineDrawerMode();
+  }
+  outlineOpen.value = !outlineOpen.value;
+  localStorage.setItem(OUTLINE_OPEN_KEY, outlineOpen.value ? '1' : '0');
+  if (outlineOpen.value) {
+    void nextTick(() => {
+      outlinePanelRef.value?.focusPanel?.();
+      scheduleOutlineScrollSpyBind();
+    });
+  } else {
+    disposeOutlineScrollSpies();
+  }
+};
+
+const onOutlineMaxLevelChange = (level: number) => {
+  outlineMaxLevel.value = level;
+  localStorage.setItem(OUTLINE_MAX_LEVEL_KEY, String(level));
+};
+
+const syncOutlineHash = (slug: string) => {
+  if (!slug || typeof window === 'undefined') return;
+  const hash = encodeURIComponent(slug);
+  const url = `${window.location.pathname}${window.location.search}#${hash}`;
+  window.history.replaceState(window.history.state, '', url);
+};
+
+const clearOutlineHash = () => {
+  if (typeof window === 'undefined') return;
+  if (!window.location.hash) return;
+  window.history.replaceState(
+    window.history.state,
+    '',
+    `${window.location.pathname}${window.location.search}`,
+  );
+};
+
+const navigateToOutlineSlug = (slug: string, opts?: { pauseSpy?: boolean }) => {
+  if (!slug || contentViewMode.value !== 'read') return;
+  const item = findHeadingBySlug(allHeadings.value, slug);
+  if (item) outlineActiveIndex.value = item.index;
+  if (opts?.pauseSpy !== false) pauseOutlineScrollSpy(1200);
+  const idx = item?.index ?? -1;
+  if (idx >= 0) {
+    readPreviewRef.value?.expandForHeadingIndex?.(idx);
+    readPreviewRef.value?.scrollToHeadingIndex?.(idx);
+  }
+  readPreviewRef.value?.scrollToHeadingSlug?.(slug);
+};
+
+const onOutlineSelect = (item: MarkdownHeadingItem) => {
+  if (contentViewMode.value !== 'read') return;
+  syncOutlineHash(item.slug);
+  outlineActiveIndex.value = item.index;
+  pauseOutlineScrollSpy(1200);
+  readPreviewRef.value?.expandForHeadingIndex?.(item.index);
+  readPreviewRef.value?.scrollToHeadingIndex?.(item.index);
+  outlinePanelRef.value?.scrollListToActive?.();
+};
+
+const notePerfHintDismissed = ref(false);
+
+const notePerfHintVisible = computed(
+  () =>
+    contentViewMode.value === 'edit' &&
+    isHugeNoteContent(formState.content) &&
+    !notePerfHintDismissed.value,
+);
+
+const dismissNotePerfHint = () => {
+  notePerfHintDismissed.value = true;
+};
+
 const isDirty = computed(() => {
   if (!note.value) return false;
-  const snapshot = JSON.stringify({
-    title: formState.title,
-    content: formState.content,
-  });
-  return snapshot !== savedSnapshot.value;
+  return (
+    formState.title !== savedTitle.value || formState.content !== savedContent.value
+  );
 });
 
 const routeSearchKeyword = computed(() =>
@@ -1064,10 +1355,8 @@ const onSelectionTodoCreated = async () => {
 };
 
 const captureSnapshot = () => {
-  savedSnapshot.value = JSON.stringify({
-    title: formState.title,
-    content: formState.content,
-  });
+  savedTitle.value = formState.title;
+  savedContent.value = formState.content;
 };
 
 const clearAutoSaveTimer = () => {
@@ -1109,7 +1398,7 @@ const getContextMenuItems = (node: TreeNodeData): ContextMenuItem[] => {
     return [
       { key: 'new-folder', label: '新建分组' },
       { key: 'new-doc', label: '新建文档' },
-      { key: 'import-clip', label: '导入剪藏' },
+      { key: 'import-clip', label: '导入文档' },
     ];
   }
   if (node.nodeType === 'folder') {
@@ -1117,7 +1406,7 @@ const getContextMenuItems = (node: TreeNodeData): ContextMenuItem[] => {
       { key: 'open-directory', label: '浏览目录' },
       { key: 'new-subfolder', label: '新建子分组' },
       { key: 'new-doc', label: '新建文档' },
-      { key: 'import-clip', label: '导入剪藏' },
+      { key: 'import-clip', label: '导入文档' },
       { key: 'rename-folder', label: '重命名分组' },
       { key: 'divider-1', divider: true },
       { key: 'delete-folder', label: '删除分组', danger: true },
@@ -1330,6 +1619,12 @@ const loadNoteDetail = async (id: string) => {
     syncDocumentSidebar(true);
     formState.title = data.title;
     formState.content = data.content;
+    notePerfHintDismissed.value = false;
+    outlineActiveIndex.value = -1;
+    outlineSpyPausedUntil = 0;
+    outlineHashConsumedForNoteId = '';
+    lazyReadHeadingsReadyCount = 0;
+    stopReadScrollPreserve();
     captureSnapshot();
     await Promise.all([loadLinkedTodos(id), loadRelatedNotes(id)]);
     await maybeAutoExtractAfterImport();
@@ -1410,7 +1705,7 @@ const maybeAutoExtractAfterSave = async (options?: { auto?: boolean }) => {
 
 const consumeImportRouteQuery = () => {
   if (route.query.import !== '1') return;
-  importModalOpen.value = true;
+  openImportModal(createAnchor.value);
   const nextQuery = { ...route.query };
   delete nextQuery.import;
   router.replace({ path: route.path, query: nextQuery });
@@ -1645,7 +1940,7 @@ const handleCreateMenu = ({ key }: { key: string }) => {
     return;
   }
   if (key === 'import') {
-    importModalOpen.value = true;
+    openImportModal(createAnchor.value);
     return;
   }
   if (key === 'doc') {
@@ -1745,6 +2040,93 @@ const resolveCreateAnchorFromNode = (node: TreeNodeData): CreateAnchor => {
   return { kind: 'top' };
 };
 
+const importFolderIdFromAnchor = (anchor: CreateAnchor): string | null => {
+  if (anchor.kind === 'folder') return anchor.folderId;
+  if (anchor.kind === 'note') return anchor.folderId;
+  return null;
+};
+
+const openImportModal = (anchor: CreateAnchor) => {
+  importDefaultFolderId.value = importFolderIdFromAnchor(anchor);
+  importModalOpen.value = true;
+};
+
+watch(importModalOpen, (open) => {
+  if (!open) importDefaultFolderId.value = null;
+});
+
+const collectFolderAncestorKeys = (folderId: string | null): string[] => {
+  if (!folderId) return [];
+  const keys: string[] = [];
+  let current: string | null = folderId;
+  while (current) {
+    keys.push(`folder-${current}`);
+    const folder = folders.value.find((f) => f.id === current);
+    current = folder?.parentId ?? null;
+  }
+  return keys;
+};
+
+const scrollDocTreeToNote = (noteId: string) => {
+  void nextTick(() => {
+    virtualTreeRef.value?.scrollToKey?.(`note-${noteId}`);
+  });
+};
+
+const optimisticInsertImportedNotes = (payload: {
+  noteIds: string[];
+  workspaceId: string;
+  folderId: string | null;
+}) => {
+  const next = [...notes.value];
+  payload.noteIds.forEach((id) => {
+    if (next.some((n) => n.id === id)) return;
+    next.push({
+      id,
+      workspaceId: payload.workspaceId,
+      folderId: payload.folderId,
+      parentId: null,
+      title: '导入的文档',
+      content: '',
+      contentType: 'markdown',
+      status: 0,
+      isFavorite: false,
+    });
+  });
+  notes.value = next;
+};
+
+const handleNotesImported = async (payload: {
+  noteIds: string[];
+  workspaceId: string;
+  folderId: string | null;
+}) => {
+  if (!routeBelongsToThisInstance()) return;
+  if (payload.workspaceId && payload.workspaceId !== currentWorkspaceId.value) {
+    currentWorkspaceId.value = payload.workspaceId;
+    await Promise.all([loadFolders(), loadTags()]);
+  }
+  if (searchKeyword.value.trim()) {
+    searchKeyword.value = '';
+  }
+  if (activeFilter.value !== 'all') {
+    activeFilter.value = 'all';
+    const query = { ...route.query } as Record<string, string>;
+    delete query.scope;
+    router.replace({ path: route.path, query });
+  }
+  optimisticInsertImportedNotes(payload);
+  ensureExpanded(...collectFolderAncestorKeys(payload.folderId));
+  const primaryId = payload.noteIds[payload.noteIds.length - 1];
+  if (primaryId) {
+    ensureExpanded(`note-${primaryId}`);
+  }
+  await loadNotes();
+  if (primaryId) {
+    scrollDocTreeToNote(primaryId);
+  }
+};
+
 const handleTreeContextMenu = async (key: string, node: TreeNodeData) => {
   if (key === 'open-directory') {
     if (node.nodeType === 'folder' && node.rawId) {
@@ -1772,7 +2154,7 @@ const handleTreeContextMenu = async (key: string, node: TreeNodeData) => {
     return;
   }
   if (key === 'import-clip') {
-    importModalOpen.value = true;
+    openImportModal(resolveCreateAnchorFromNode(node));
     return;
   }
   if (key === 'new-subdoc' && node.rawId) {
@@ -2120,6 +2502,80 @@ const maybeAutoSummarize = async () => {
   }
 };
 
+/** 切换阅读/编辑前捕获的 Markdown 字符锚点（与大纲 spy 探测线一致） */
+let pendingViewModeAnchorOffset: number | null = null;
+
+const captureViewModeScrollAnchor = (): number => {
+  if (contentViewMode.value === 'edit') {
+    return markdownEditorRef.value?.getScrollAnchorOffset?.() ?? 0;
+  }
+  const root = readScrollRef.value;
+  const preview = readPreviewRef.value;
+  if (root && preview?.getScrollAnchorOffset) {
+    return preview.getScrollAnchorOffset(root);
+  }
+  return 0;
+};
+
+const restoreViewModeScrollAnchor = (offset: number) => {
+  const safe = Math.max(0, Math.min(offset, formState.content.length));
+  pauseOutlineScrollSpy(1400);
+  const idx = activeHeadingIndexAtOffset(allHeadings.value, safe);
+  if (idx >= 0) outlineActiveIndex.value = idx;
+
+  const attempt = (left: number) => {
+    if (contentViewMode.value === 'edit') {
+      const editor = markdownEditorRef.value;
+      if (!editor?.scrollToRange) {
+        if (left > 0) setTimeout(() => attempt(left - 1), 80);
+        return;
+      }
+      editor.scrollToRange(safe, safe, { clearSelection: true });
+      return;
+    }
+    const root = readScrollRef.value;
+    const preview = readPreviewRef.value;
+    if (!root || !preview?.scrollToAnchorOffset) {
+      if (left > 0) setTimeout(() => attempt(left - 1), 80);
+      return;
+    }
+    const ok = preview.scrollToAnchorOffset(root, safe);
+    if (!ok && left > 0) setTimeout(() => attempt(left - 1), 120);
+  };
+
+  void nextTick(() => setTimeout(() => attempt(20), 60));
+};
+
+const toggleContentViewMode = async () => {
+  pendingViewModeAnchorOffset = captureViewModeScrollAnchor();
+  if (contentViewMode.value === 'edit') {
+    if (isDirty.value) {
+      const saved = await saveDetail({ silent: true });
+      if (!saved) {
+        pendingViewModeAnchorOffset = null;
+        return;
+      }
+    }
+    contentViewMode.value = 'read';
+  } else {
+    contentViewMode.value = 'edit';
+    disposeOutlineScrollSpies();
+  }
+  localStorage.setItem(CONTENT_VIEW_STORAGE_KEY, contentViewMode.value);
+  const anchor = pendingViewModeAnchorOffset;
+  pendingViewModeAnchorOffset = null;
+  void nextTick(() => {
+    if (anchor != null) {
+      restoreViewModeScrollAnchor(anchor);
+    } else if (contentViewMode.value === 'read') {
+      consumeOutlineHashFromUrl();
+    }
+    if (contentViewMode.value === 'read') {
+      scheduleOutlineScrollSpyBind();
+    }
+  });
+};
+
 const saveDetail = async (options?: { silent?: boolean; auto?: boolean }) => {
   if (!note.value || saving.value) return false;
   if (!isDirty.value) return true;
@@ -2160,6 +2616,7 @@ const closeAiPanel = () => {
 };
 
 const openAiPanel = () => {
+  if (!aiPanelOpen.value) outlineOpen.value = false;
   attachmentDrawerOpen.value = false;
   contextDrawerOpen.value = false;
   aiPanelOpen.value = !aiPanelOpen.value;
@@ -2174,12 +2631,14 @@ const closeContextDrawer = () => {
 };
 
 const toggleContextDrawer = () => {
+  if (!contextDrawerOpen.value) outlineOpen.value = false;
   aiPanelOpen.value = false;
   attachmentDrawerOpen.value = false;
   contextDrawerOpen.value = !contextDrawerOpen.value;
 };
 
 const toggleAttachmentDrawer = () => {
+  if (!attachmentDrawerOpen.value) outlineOpen.value = false;
   aiPanelOpen.value = false;
   contextDrawerOpen.value = false;
   attachmentDrawerOpen.value = !attachmentDrawerOpen.value;
@@ -2200,7 +2659,147 @@ const onEditorGlobalKeydown = (event: KeyboardEvent) => {
   if (contextDrawerOpen.value) closeContextDrawer();
 };
 
+let treeSearchTimer: ReturnType<typeof setTimeout> | null = null;
+watch(searchKeyword, () => {
+  if (treeSearchTimer) clearTimeout(treeSearchTimer);
+  treeSearchTimer = setTimeout(() => {
+    void loadNotes();
+  }, 400);
+});
+
+let disposeReadScrollSpy: (() => void) | null = null;
+let outlineSpyBindTimer: ReturnType<typeof setTimeout> | null = null;
+/** 点击大纲跳转后短暂忽略滚动 spy，避免高亮被滚回旧位置 */
+let outlineSpyPausedUntil = 0;
+
+const pauseOutlineScrollSpy = (ms = 900) => {
+  outlineSpyPausedUntil = Date.now() + ms;
+};
+
+const shouldIgnoreOutlineSpy = () => Date.now() < outlineSpyPausedUntil;
+
+const disposeOutlineScrollSpies = () => {
+  disposeReadScrollSpy?.();
+  disposeReadScrollSpy = null;
+};
+
+const bindReadScrollSpy = () => {
+  disposeReadScrollSpy?.();
+  disposeReadScrollSpy = null;
+  if (!outlineVisible.value) return;
+  const root = readScrollRef.value;
+  const preview = readPreviewRef.value;
+  if (!root || !preview?.attachScrollSpy) return;
+  disposeReadScrollSpy = preview.attachScrollSpy(root, (idx) => {
+    if (shouldIgnoreOutlineSpy()) return;
+    if (idx >= 0) outlineActiveIndex.value = idx;
+  });
+};
+
+const bindOutlineScrollSpy = () => {
+  if (!outlineVisible.value || !note.value) {
+    disposeOutlineScrollSpies();
+    return;
+  }
+  bindReadScrollSpy();
+};
+
+const scheduleOutlineScrollSpyBind = () => {
+  if (outlineSpyBindTimer) clearTimeout(outlineSpyBindTimer);
+  outlineSpyBindTimer = setTimeout(() => {
+    outlineSpyBindTimer = null;
+    void nextTick(() => bindOutlineScrollSpy());
+  }, 80);
+};
+
+/** 当前文档是否已消费过 URL hash 跳转（避免懒加载多分块重复 scrollIntoView 把阅读区拽回顶部） */
+let outlineHashConsumedForNoteId = '';
+let lazyReadHeadingsReadyCount = 0;
+let readScrollPreserveUntil = 0;
+let readScrollPreserveTop = 0;
+let readScrollPreserveHandler: (() => void) | null = null;
+
+const stopReadScrollPreserve = () => {
+  const root = readScrollRef.value;
+  if (root && readScrollPreserveHandler) {
+    root.removeEventListener('scroll', readScrollPreserveHandler);
+  }
+  readScrollPreserveHandler = null;
+  readScrollPreserveUntil = 0;
+};
+
+/** 懒加载分块挂载导致 scrollHeight 突变时，短暂保持用户滚动位置 */
+const preserveReadScrollDuringChunkMount = (ms = 900) => {
+  const root = readScrollRef.value;
+  if (!root || contentViewMode.value !== 'read') return;
+  stopReadScrollPreserve();
+  readScrollPreserveTop = root.scrollTop;
+  readScrollPreserveUntil = Date.now() + ms;
+  readScrollPreserveHandler = () => {
+    if (Date.now() > readScrollPreserveUntil) {
+      stopReadScrollPreserve();
+      return;
+    }
+    if (root.scrollTop < readScrollPreserveTop - 8) {
+      root.scrollTop = readScrollPreserveTop;
+    } else {
+      readScrollPreserveTop = root.scrollTop;
+    }
+  };
+  root.addEventListener('scroll', readScrollPreserveHandler, { passive: true });
+  setTimeout(() => stopReadScrollPreserve(), ms + 50);
+};
+
+const consumeOutlineHashFromUrl = (opts?: { force?: boolean }) => {
+  if (typeof window === 'undefined') return;
+  if (contentViewMode.value !== 'read') return;
+  const noteId = activeNoteId.value || '';
+  if (!opts?.force && noteId && outlineHashConsumedForNoteId === noteId) return;
+
+  const raw = window.location.hash.replace(/^#/, '');
+  if (!raw) return;
+  const slug = decodeURIComponent(raw);
+
+  const attempt = (left: number) => {
+    if (contentViewMode.value !== 'read') return;
+    const item = findHeadingBySlug(allHeadings.value, slug);
+    if (item) {
+      outlineActiveIndex.value = item.index;
+      pauseOutlineScrollSpy(1200);
+    }
+
+    if (item) {
+      readPreviewRef.value?.expandForHeadingIndex?.(item.index);
+      readPreviewRef.value?.scrollToHeadingIndex?.(item.index);
+    }
+    const ok = readPreviewRef.value?.scrollToHeadingSlug?.(slug);
+    if (ok && noteId) {
+      outlineHashConsumedForNoteId = noteId;
+      return;
+    }
+    if (!ok && left > 0) setTimeout(() => attempt(left - 1), 120);
+  };
+
+  void nextTick(() => setTimeout(() => attempt(15), 60));
+};
+
+const onReadPreviewHeadingsReady = (count?: number) => {
+  if (useLazyReadPreview.value && typeof count === 'number') {
+    const prev = lazyReadHeadingsReadyCount;
+    lazyReadHeadingsReadyCount = count;
+    if (count > prev && prev > 0) {
+      preserveReadScrollDuringChunkMount();
+    }
+  }
+  scheduleOutlineScrollSpyBind();
+  if (typeof window !== 'undefined' && window.location.hash) {
+    consumeOutlineHashFromUrl();
+  }
+};
+
 onMounted(() => {
+  syncOutlineDrawerMode();
+  window.addEventListener('resize', syncOutlineDrawerMode);
   void bootstrap();
   document.addEventListener('mousedown', onDocumentPointerDown);
   document.addEventListener('scroll', closeContextMenu, true);
@@ -2221,9 +2820,13 @@ onUnmounted(() => {
   if (autoSavedHintTimer) {
     clearTimeout(autoSavedHintTimer);
   }
+  if (outlineSpyBindTimer) clearTimeout(outlineSpyBindTimer);
+  stopReadScrollPreserve();
+  disposeOutlineScrollSpies();
   document.removeEventListener('mousedown', onDocumentPointerDown);
   document.removeEventListener('scroll', closeContextMenu, true);
   window.removeEventListener('resize', closeContextMenu);
+  window.removeEventListener('resize', syncOutlineDrawerMode);
   window.removeEventListener('keydown', onEditorGlobalKeydown);
   sidebarLayout.onDocumentClose();
 });
@@ -2280,6 +2883,32 @@ watch(
     if (typeof folder === 'string' && folder) {
       directoryFolderId.value = folder;
     }
+  },
+);
+
+watch(
+  () => allHeadings.value.length,
+  (len) => {
+    if (len === 0 && outlineOpen.value) {
+      outlineOpen.value = false;
+    }
+  },
+);
+
+watch(
+  () => [contentViewMode.value, detailLoading.value, activeNoteId.value] as const,
+  ([mode, loading]) => {
+    if (loading) return;
+    if (mode === 'edit') {
+      disposeOutlineScrollSpies();
+      return;
+    }
+    void nextTick(() => {
+      scheduleOutlineScrollSpyBind();
+      if (typeof window !== 'undefined' && window.location.hash) {
+        consumeOutlineHashFromUrl();
+      }
+    });
   },
 );
 
@@ -2392,6 +3021,29 @@ watch(
   padding: 8px 6px 12px;
 }
 
+.tree-body--virtual {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
+
+.tree-body--virtual .note-doc-tree-virtual {
+  flex: 1;
+  min-height: 0;
+}
+
+.tree-virtual-hint {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--noto-text-muted, #64748b);
+  background: rgba(8, 145, 178, 0.08);
+  border-bottom: 1px solid var(--noto-border-soft, rgba(15, 23, 42, 0.06));
+}
+
 .tree-drag-hint {
   color: #667085;
 }
@@ -2433,7 +3085,57 @@ watch(
   min-width: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   background: #fff;
+}
+
+.editor-shell--read {
+  background: var(--noto-surface, #fff);
+}
+
+.read-mode-badge {
+  font-size: 12px;
+  color: var(--noto-accent-deep, #0891b2);
+}
+
+.read-title {
+  margin: 0;
+  padding: 8px 24px 0;
+  font-size: clamp(1.75rem, 2.6vw, 2.25rem);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--noto-text);
+}
+
+.editor-canvas--read {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.read-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.read-body {
+  width: 100%;
+  max-width: 740px;
+  margin: 0 auto;
+  padding: 16px 24px 48px;
+  font-size: 16px;
+  line-height: 1.8;
+  box-sizing: border-box;
+}
+
+.read-scroll :deep(.safe-md-preview) {
+  width: 100%;
 }
 
 .ai-drawer-root,
@@ -2592,6 +3294,22 @@ watch(
   border: 1px solid #e0e7ff;
 }
 
+.note-perf-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 20px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  font-size: 12px;
+  color: #92400e;
+  line-height: 1.5;
+}
+
 .write-nudge-text {
   font-size: 12px;
   color: #4338ca;
@@ -2722,6 +3440,20 @@ watch(
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.editor-canvas--with-outline {
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.editor-canvas-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .editor-canvas :deep(.noto-markdown-editor) {

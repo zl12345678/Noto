@@ -28,6 +28,20 @@
             <span class="stat-label">今日完成</span>
           </div>
         </div>
+        <div v-if="stats" class="loop-doc-stats">
+          <button type="button" class="doc-stat-pill" @click="goNotes('all')">
+            <span class="doc-stat-num">{{ stats.totalNotes }}</span>
+            <span class="doc-stat-label">文档</span>
+          </button>
+          <button type="button" class="doc-stat-pill doc-stat-pill--favorite" @click="goNotes('favorite')">
+            <span class="doc-stat-num">{{ stats.favoriteNotes }}</span>
+            <span class="doc-stat-label">收藏</span>
+          </button>
+          <button type="button" class="doc-stat-pill doc-stat-pill--archived" @click="goNotes('archived')">
+            <span class="doc-stat-num">{{ stats.archivedNotes }}</span>
+            <span class="doc-stat-label">归档</span>
+          </button>
+        </div>
       </div>
 
       <div class="loop-workflow">
@@ -866,6 +880,56 @@ onMounted(() => {
 .stat-pill--done {
   background: var(--noto-pastel-green);
   border-color: rgba(16, 185, 129, 0.15);
+}
+
+.loop-doc-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.doc-stat-pill {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 72px;
+  padding: 8px 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition:
+    transform 0.2s var(--noto-ease-premium),
+    box-shadow 0.2s var(--noto-ease-premium);
+}
+
+.doc-stat-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.doc-stat-pill--favorite {
+  background: var(--noto-pastel-yellow);
+  border-color: rgba(245, 158, 11, 0.15);
+}
+
+.doc-stat-pill--archived {
+  background: #f1f5f9;
+  border-color: rgba(100, 116, 139, 0.15);
+}
+
+.doc-stat-num {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--noto-text, #0f172a);
+  line-height: 1.1;
+}
+
+.doc-stat-label {
+  font-size: 11px;
+  color: var(--noto-text-muted, #64748b);
 }
 
 .stat-pill:hover {

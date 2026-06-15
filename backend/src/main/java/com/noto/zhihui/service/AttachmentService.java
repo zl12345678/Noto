@@ -24,6 +24,7 @@ public interface AttachmentService {
             Boolean uncategorized,
             Long noteId,
             Boolean unlinkedOnly,
+            String keyword,
             Long userId
     );
 
@@ -46,6 +47,15 @@ public interface AttachmentService {
     String buildShareFileUrl(Long attachmentId, String shareLinkToken);
 
     List<NoteAttachmentEntity> resolveBatchDownloadEntities(List<Long> attachmentIds, Long userId);
+
+    List<NoteAttachmentEntity> resolveBatchDownloadSelection(
+            List<Long> attachmentIds,
+            List<Long> folderIds,
+            Boolean uncategorized,
+            Boolean unlinkedOnly,
+            Long workspaceId,
+            Long userId
+    );
 
     Path buildBatchDownloadZipFile(List<NoteAttachmentEntity> entities) throws IOException;
 

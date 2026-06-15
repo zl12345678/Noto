@@ -12,6 +12,8 @@ const STORAGE_KEY = 'noto-sidebar-layout';
 type StoredLayout = {
   navWidth?: number;
   treeWidth?: number;
+  navExpanded?: boolean;
+  treeExpanded?: boolean;
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -28,11 +30,8 @@ function readStoredLayout(): StoredLayout | null {
   }
 }
 
-function persistLayout(navWidth: number, treeWidth: number) {
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify({ navWidth, treeWidth }),
-  );
+function persistLayout(layout: StoredLayout) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
 }
 
 const stored = readStoredLayout();
@@ -45,15 +44,24 @@ export const useSidebarLayoutStore = defineStore('sidebarLayout', () => {
   const treeWidth = ref(
     clamp(stored?.treeWidth ?? TREE_DEFAULT, TREE_MIN, TREE_MAX),
   );
-  const navExpanded = ref(true);
-  const treeExpanded = ref(true);
+  const navExpanded = ref(stored?.navExpanded ?? true);
+  const treeExpanded = ref(stored?.treeExpanded ?? true);
 
   let persistTimer: ReturnType<typeof setTimeout> | undefined;
 
-  watch([navWidth, treeWidth], ([nav, tree]) => {
+  function schedulePersist() {
     if (persistTimer) clearTimeout(persistTimer);
-    persistTimer = setTimeout(() => persistLayout(nav, tree), 200);
-  });
+    persistTimer = setTimeout(() => {
+      persistLayout({
+        navWidth: navWidth.value,
+        treeWidth: treeWidth.value,
+        navExpanded: navExpanded.value,
+        treeExpanded: treeExpanded.value,
+      });
+    }, 200);
+  }
+
+  watch([navWidth, treeWidth, navExpanded, treeExpanded], schedulePersist);
 
   const navCollapsed = computed(() => !navExpanded.value);
   const treeCollapsed = computed(() => isDocumentOpen.value && !treeExpanded.value);

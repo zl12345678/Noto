@@ -1,7 +1,13 @@
 <template>
   <Teleport to="body">
-    <div v-if="open" class="cmdk-overlay" @mousedown.self="close">
-      <div class="cmdk-panel" role="dialog" aria-modal="true" aria-label="命令面板">
+    <div v-if="open" ref="overlayRef" class="cmdk-overlay" tabindex="-1" @mousedown.self="close" @keydown="onOverlayKeydown">
+      <div
+        class="cmdk-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label="命令面板"
+        aria-describedby="cmdk-help"
+      >
         <div class="cmdk-input-wrap">
           <SearchOutlined class="cmdk-input-icon" />
           <input
@@ -42,10 +48,11 @@
 
         <div v-else class="cmdk-empty">没有匹配项，试试换个关键词</div>
 
-        <div class="cmdk-footer">
+        <div id="cmdk-help" class="cmdk-footer">
           <span><kbd>↑↓</kbd> 选择</span>
           <span><kbd>Enter</kbd> 确认</span>
-          <span><kbd>Ctrl</kbd><kbd>K</kbd> 打开</span>
+          <span><kbd>Esc</kbd> 关闭</span>
+          <span><kbd>?</kbd> 快捷键</span>
         </div>
       </div>
     </div>
@@ -67,6 +74,7 @@ import {
 import { searchNotes, type SearchResult } from '../../api/search';
 import type { Workspace } from '../../api/workspaces';
 import { buildNoteRouteQuery } from '../../utils/noteNavigation';
+import { buildSearchCacheKey, getSearchCache, setSearchCache } from '../../utils/searchCache';
 
 type CommandItem = {
   id: string;
@@ -91,6 +99,7 @@ const activeIndex = ref(0);
 const loading = ref(false);
 const noteResults = ref<SearchResult[]>([]);
 const inputRef = ref<HTMLInputElement | null>(null);
+const overlayRef = ref<HTMLDivElement | null>(null);
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 let searchSeq = 0;
@@ -112,6 +121,7 @@ watch(open, async (visible) => {
     await nextTick();
     inputRef.value?.focus();
     inputRef.value?.select();
+    overlayRef.value?.focus();
   } else if (searchTimer) {
     clearTimeout(searchTimer);
     searchTimer = null;
@@ -134,10 +144,19 @@ watch(query, (value) => {
 
 const fetchNotes = async (keyword: string) => {
   const seq = ++searchSeq;
+  const cacheKey = buildSearchCacheKey({ keyword, page: 1, size: 8 });
+  const cached = getSearchCache(cacheKey);
+  if (cached) {
+    if (seq !== searchSeq) return;
+    noteResults.value = cached.records || [];
+    loading.value = false;
+    return;
+  }
   loading.value = true;
   try {
     const page = await searchNotes({ keyword, page: 1, size: 8 });
     if (seq !== searchSeq) return;
+    setSearchCache(cacheKey, page);
     noteResults.value = page.records || [];
   } catch {
     if (seq !== searchSeq) return;
@@ -179,7 +198,7 @@ const navItems = computed<CommandItem[]>(() => {
     },
     {
       id: 'nav-import',
-      label: '导入剪藏',
+      label: '导入文档',
       hint: '粘贴网页/Markdown 入库',
       icon: FileTextOutlined,
       run: () =>
@@ -336,6 +355,13 @@ const onInputKeydown = (event: KeyboardEvent) => {
     close();
   }
 };
+
+const onOverlayKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    close();
+  }
+};
 </script>
 
 <style scoped>
@@ -354,8 +380,8 @@ const onInputKeydown = (event: KeyboardEvent) => {
 .cmdk-panel {
   width: min(640px, 100%);
   border-radius: 16px;
-  background: #fff;
-  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.18);
+  background: var(--noto-surface, #fff);
+  box-shadow: var(--noto-shadow-ambient, 0 24px 64px rgba(15, 23, 42, 0.18));
   overflow: hidden;
 }
 
@@ -364,11 +390,11 @@ const onInputKeydown = (event: KeyboardEvent) => {
   align-items: center;
   gap: 10px;
   padding: 14px 16px;
-  border-bottom: 1px solid #eef2f7;
+  border-bottom: 1px solid var(--noto-border, #eef2f7);
 }
 
 .cmdk-input-icon {
-  color: #94a3b8;
+  color: var(--noto-text-muted, #94a3b8);
   font-size: 16px;
   flex-shrink: 0;
 }
@@ -378,19 +404,19 @@ const onInputKeydown = (event: KeyboardEvent) => {
   border: none;
   outline: none;
   font-size: 15px;
-  color: #101828;
+  color: var(--noto-text, #101828);
   background: transparent;
 }
 
 .cmdk-input::placeholder {
-  color: #94a3b8;
+  color: var(--noto-text-muted, #94a3b8);
 }
 
 .cmdk-kbd {
   font-size: 11px;
-  color: #667085;
-  background: #f8fafc;
-  border: 1px solid #e4e7ec;
+  color: var(--noto-text-muted, #667085);
+  background: var(--noto-canvas, #f8fafc);
+  border: 1px solid var(--noto-border, #e4e7ec);
   border-radius: 6px;
   padding: 2px 6px;
 }
@@ -415,11 +441,11 @@ const onInputKeydown = (event: KeyboardEvent) => {
 
 .cmdk-item.active,
 .cmdk-item:hover {
-  background: #f0f7ff;
+  background: var(--noto-pastel-blue, #f0f7ff);
 }
 
 .cmdk-item-icon {
-  color: #475467;
+  color: var(--noto-text-muted, #475467);
   font-size: 16px;
   flex-shrink: 0;
 }
@@ -445,7 +471,7 @@ const onInputKeydown = (event: KeyboardEvent) => {
 
 .cmdk-item-label {
   font-size: 14px;
-  color: #101828;
+  color: var(--noto-text, #101828);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -453,7 +479,7 @@ const onInputKeydown = (event: KeyboardEvent) => {
 
 .cmdk-item-hint {
   font-size: 12px;
-  color: #667085;
+  color: var(--noto-text-muted, #667085);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -462,8 +488,8 @@ const onInputKeydown = (event: KeyboardEvent) => {
 .cmdk-item-badge {
   flex-shrink: 0;
   font-size: 11px;
-  color: #475467;
-  background: #f2f4f7;
+  color: var(--noto-text-muted, #475467);
+  background: var(--noto-canvas, #f2f4f7);
   border-radius: 999px;
   padding: 2px 8px;
 }
@@ -472,7 +498,7 @@ const onInputKeydown = (event: KeyboardEvent) => {
 .cmdk-empty {
   padding: 24px 16px;
   text-align: center;
-  color: #667085;
+  color: var(--noto-text-muted, #667085);
   font-size: 13px;
 }
 
@@ -488,15 +514,15 @@ const onInputKeydown = (event: KeyboardEvent) => {
   flex-wrap: wrap;
   gap: 12px;
   padding: 10px 16px;
-  border-top: 1px solid #eef2f7;
+  border-top: 1px solid var(--noto-border, #eef2f7);
   font-size: 11px;
-  color: #94a3b8;
+  color: var(--noto-text-muted, #94a3b8);
 }
 
 .cmdk-footer kbd {
   font-size: 10px;
-  background: #f8fafc;
-  border: 1px solid #e4e7ec;
+  background: var(--noto-canvas, #f8fafc);
+  border: 1px solid var(--noto-border, #e4e7ec);
   border-radius: 4px;
   padding: 1px 4px;
   margin-right: 2px;

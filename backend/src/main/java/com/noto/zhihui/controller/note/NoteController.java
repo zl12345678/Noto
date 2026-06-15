@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -66,6 +67,19 @@ public class NoteController {
     @PostMapping("/import")
     public ApiResponse<NoteImportVO> importClip(@Valid @RequestBody NoteClipImportRequest request) {
         return ApiResponse.success(noteImportService.importClip(request, requireUserId()), null);
+    }
+
+    @PostMapping("/import/file")
+    public ApiResponse<NoteImportVO> importFile(
+            @RequestParam Long workspaceId,
+            @RequestParam(required = false) Long folderId,
+            @RequestParam(required = false) String title,
+            @RequestParam("file") MultipartFile file
+    ) {
+        return ApiResponse.success(
+                noteImportService.importFile(file, workspaceId, folderId, title, requireUserId()),
+                null
+        );
     }
 
     @GetMapping("/{id}")

@@ -1,7 +1,5 @@
 package com.noto.zhihui.dto.drive;
 
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.util.List;
@@ -9,7 +7,18 @@ import java.util.List;
 @Data
 public class DriveBatchDownloadRequest {
 
-    @NotEmpty(message = "请选择要下载的文件")
-    @Size(max = 50, message = "单次最多下载 50 个文件")
+    /** 直接选中的附件 ID */
     private List<String> ids;
+
+    /** 选中的文件夹 ID（含子文件夹内文件） */
+    private List<String> folderIds;
+
+    /** 虚拟目录：未分类 */
+    private Boolean uncategorized;
+
+    /** 虚拟目录：未关联文档 */
+    private Boolean unlinkedOnly;
+
+    /** 解析 folderIds / 虚拟目录时必填 */
+    private Long workspaceId;
 }

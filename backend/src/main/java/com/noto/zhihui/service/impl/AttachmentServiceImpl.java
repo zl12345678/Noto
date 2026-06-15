@@ -31,9 +31,11 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -174,6 +176,7 @@ public class AttachmentServiceImpl implements AttachmentService {
             Boolean uncategorized,
             Long noteId,
             Boolean unlinkedOnly,
+            String keyword,
             Long userId
     ) {
         workspaceService.requireOwnedWorkspace(workspaceId, userId);
@@ -184,7 +187,9 @@ public class AttachmentServiceImpl implements AttachmentService {
         LambdaQueryWrapper<NoteAttachmentEntity> query = new LambdaQueryWrapper<NoteAttachmentEntity>()
                 .eq(NoteAttachmentEntity::getWorkspaceId, workspaceId)
                 .orderByDesc(NoteAttachmentEntity::getCreatedAt);
-        if (Boolean.TRUE.equals(uncategorized)) {
+        if (StringUtils.hasText(keyword)) {
+            query.like(NoteAttachmentEntity::getFileName, keyword.trim());
+        } else if (Boolean.TRUE.equals(uncategorized)) {
             query.isNull(NoteAttachmentEntity::getFolderId);
         } else if (folderId != null) {
             query.eq(NoteAttachmentEntity::getFolderId, folderId);
@@ -366,6 +371,96 @@ public class AttachmentServiceImpl implements AttachmentService {
             throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "批量下载总大小不能超过 200MB");
         }
         return entities;
+    }
+
+    @Override
+    public List<NoteAttachmentEntity> resolveBatchDownloadSelection(
+            List<Long> attachmentIds,
+            List<Long> folderIds,
+            Boolean uncategorized,
+            Boolean unlinkedOnly,
+            Long workspaceId,
+            Long userId
+    ) {
+        if (!objectStorageService.isAvailable()) {
+            throw new BizException(ErrorCode.STORAGE_UNAVAILABLE);
+        }
+
+        LinkedHashSet<Long> mergedIds = new LinkedHashSet<>();
+        if (attachmentIds != null) {
+            attachmentIds.stream().filter(Objects::nonNull).forEach(mergedIds::add);
+        }
+
+        boolean needsWorkspace = (folderIds != null && !folderIds.isEmpty())
+                || Boolean.TRUE.equals(uncategorized)
+                || Boolean.TRUE.equals(unlinkedOnly);
+        if (needsWorkspace) {
+            if (workspaceId == null) {
+                throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "请选择知识库");
+            }
+            workspaceService.requireOwnedWorkspace(workspaceId, userId);
+        }
+
+        if (folderIds != null && !folderIds.isEmpty()) {
+            Set<Long> scopedFolderIds = collectFolderScopeIds(folderIds, workspaceId);
+            if (!scopedFolderIds.isEmpty()) {
+                attachmentMapper.selectList(new LambdaQueryWrapper<NoteAttachmentEntity>()
+                                .eq(NoteAttachmentEntity::getWorkspaceId, workspaceId)
+                                .in(NoteAttachmentEntity::getFolderId, scopedFolderIds))
+                        .forEach(entity -> mergedIds.add(entity.getId()));
+            }
+        }
+
+        if (Boolean.TRUE.equals(uncategorized)) {
+            attachmentMapper.selectList(new LambdaQueryWrapper<NoteAttachmentEntity>()
+                            .eq(NoteAttachmentEntity::getWorkspaceId, workspaceId)
+                            .isNull(NoteAttachmentEntity::getFolderId))
+                    .forEach(entity -> mergedIds.add(entity.getId()));
+        }
+
+        if (Boolean.TRUE.equals(unlinkedOnly)) {
+            List<NoteAttachmentEntity> unlinkedCandidates = attachmentMapper.selectList(
+                    new LambdaQueryWrapper<NoteAttachmentEntity>()
+                            .eq(NoteAttachmentEntity::getWorkspaceId, workspaceId)
+            );
+            Set<Long> linkedAny = loadAttachmentIdsWithAnyLink(
+                    unlinkedCandidates.stream().map(NoteAttachmentEntity::getId).toList()
+            );
+            unlinkedCandidates.stream()
+                    .filter(entity -> !linkedAny.contains(entity.getId()))
+                    .forEach(entity -> mergedIds.add(entity.getId()));
+        }
+
+        return resolveBatchDownloadEntities(new ArrayList<>(mergedIds), userId);
+    }
+
+    private Set<Long> collectFolderScopeIds(List<Long> rootFolderIds, Long workspaceId) {
+        List<DriveFolderEntity> allFolders = driveFolderService.lambdaQuery()
+                .eq(DriveFolderEntity::getWorkspaceId, workspaceId)
+                .list();
+        Map<Long, List<Long>> childrenByParent = new HashMap<>();
+        for (DriveFolderEntity folder : allFolders) {
+            Long parentKey = folder.getParentId() != null ? folder.getParentId() : 0L;
+            childrenByParent.computeIfAbsent(parentKey, key -> new ArrayList<>()).add(folder.getId());
+        }
+
+        LinkedHashSet<Long> scoped = new LinkedHashSet<>();
+        ArrayDeque<Long> queue = new ArrayDeque<>();
+        for (Long rootId : rootFolderIds) {
+            if (rootId != null) {
+                queue.add(rootId);
+            }
+        }
+        while (!queue.isEmpty()) {
+            Long current = queue.poll();
+            if (!scoped.add(current)) {
+                continue;
+            }
+            for (Long childId : childrenByParent.getOrDefault(current, List.of())) {
+                queue.add(childId);
+            }
+        }
+        return scoped;
     }
 
     @Override

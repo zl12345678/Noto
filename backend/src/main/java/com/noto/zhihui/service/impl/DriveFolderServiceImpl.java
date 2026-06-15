@@ -34,13 +34,16 @@ public class DriveFolderServiceImpl extends ServiceImpl<DriveFolderMapper, Drive
     }
 
     @Override
-    public List<DriveFolderVO> listFolders(Long workspaceId, Long userId) {
+    public List<DriveFolderVO> listFolders(Long workspaceId, Long userId, String keyword) {
         workspaceService.requireOwnedWorkspace(workspaceId, userId);
-        List<DriveFolderEntity> folders = lambdaQuery()
+        LambdaQueryWrapper<DriveFolderEntity> query = new LambdaQueryWrapper<DriveFolderEntity>()
                 .eq(DriveFolderEntity::getWorkspaceId, workspaceId)
                 .orderByDesc(DriveFolderEntity::getSortOrder)
-                .orderByAsc(DriveFolderEntity::getCreatedAt)
-                .list();
+                .orderByAsc(DriveFolderEntity::getCreatedAt);
+        if (StringUtils.hasText(keyword)) {
+            query.like(DriveFolderEntity::getName, keyword.trim());
+        }
+        List<DriveFolderEntity> folders = list(query);
         Map<Long, Long> counts = attachmentMapper.selectList(new LambdaQueryWrapper<NoteAttachmentEntity>()
                         .eq(NoteAttachmentEntity::getWorkspaceId, workspaceId)
                         .isNotNull(NoteAttachmentEntity::getFolderId))

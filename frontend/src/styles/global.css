@@ -35,6 +35,30 @@
   font-family: var(--noto-font-sans);
   color: var(--noto-text);
   background: var(--noto-canvas);
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --noto-canvas: #0f1419;
+  --noto-canvas-alt: #151c28;
+  --noto-surface: #1a2332;
+  --noto-surface-solid: #1a2332;
+  --noto-text: #e2e8f0;
+  --noto-text-muted: #94a3b8;
+  --noto-border: #334155;
+  --noto-border-soft: rgba(148, 163, 184, 0.14);
+  --noto-primary: #22d3ee;
+  --noto-accent: #06b6d4;
+  --noto-accent-deep: #67e8f9;
+  --noto-accent-violet: #a5b4fc;
+  --noto-shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.4);
+  --noto-shadow-glow: 0 4px 20px rgba(8, 145, 178, 0.18);
+  --noto-shadow-ambient: 0 20px 48px rgba(0, 0, 0, 0.45);
+  --noto-pastel-blue: rgba(8, 145, 178, 0.18);
+  --noto-pastel-green: rgba(16, 185, 129, 0.16);
+  --noto-pastel-yellow: rgba(245, 158, 11, 0.16);
+  --noto-pastel-violet: rgba(99, 102, 241, 0.18);
+  color-scheme: dark;
 }
 
 * {
@@ -58,6 +82,13 @@ body {
     radial-gradient(circle at 10% 8%, rgba(8, 145, 178, 0.08), transparent 32%),
     radial-gradient(circle at 90% 6%, rgba(99, 102, 241, 0.06), transparent 30%),
     linear-gradient(180deg, #fafbfc 0%, var(--noto-canvas) 100%);
+}
+
+:root[data-theme='dark'] body {
+  background:
+    radial-gradient(circle at 10% 8%, rgba(8, 145, 178, 0.12), transparent 34%),
+    radial-gradient(circle at 90% 6%, rgba(99, 102, 241, 0.08), transparent 32%),
+    linear-gradient(180deg, #121820 0%, var(--noto-canvas) 100%);
 }
 
 body::before {

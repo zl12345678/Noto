@@ -18,9 +18,12 @@ import com.noto.zhihui.vo.note.NoteVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 @Service
 public class NoteImportServiceImpl implements NoteImportService {
@@ -70,6 +73,79 @@ public class NoteImportServiceImpl implements NoteImportService {
             structured = tryStructureWithAi(created, userId);
         }
         return new NoteImportVO(created.getId(), created.getTitle(), structured);
+    }
+
+    @Override
+    @Transactional
+    public NoteImportVO importFile(
+            MultipartFile file,
+            Long workspaceId,
+            Long folderId,
+            String title,
+            Long userId
+    ) {
+        if (file == null || file.isEmpty()) {
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "请选择文件");
+        }
+        String originalName = file.getOriginalFilename();
+        String extension = extractExtension(originalName);
+        if (!isSupportedImportExtension(extension)) {
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "仅支持 .md / .markdown / .txt 文件");
+        }
+
+        String rawContent;
+        try {
+            rawContent = new String(file.getBytes(), StandardCharsets.UTF_8);
+        } catch (Exception ex) {
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "无法读取文件内容");
+        }
+        if (!StringUtils.hasText(rawContent)) {
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "文件内容为空");
+        }
+
+        NoteClipImportRequest request = new NoteClipImportRequest();
+        request.setWorkspaceId(workspaceId);
+        request.setFolderId(folderId);
+        request.setTitle(resolveImportTitle(title, originalName));
+        request.setContent(rawContent.trim());
+        request.setContentType(isMarkdownExtension(extension) ? "markdown" : "plain");
+        request.setStructureWithAi(false);
+        return importClip(request, userId);
+    }
+
+    private boolean isSupportedImportExtension(String extension) {
+        return "md".equals(extension) || "markdown".equals(extension) || "txt".equals(extension);
+    }
+
+    private boolean isMarkdownExtension(String extension) {
+        return "md".equals(extension) || "markdown".equals(extension);
+    }
+
+    private String extractExtension(String filename) {
+        if (!StringUtils.hasText(filename)) {
+            return "";
+        }
+        String normalized = filename.trim();
+        int dot = normalized.lastIndexOf('.');
+        if (dot < 0 || dot >= normalized.length() - 1) {
+            return "";
+        }
+        return normalized.substring(dot + 1).toLowerCase(Locale.ROOT);
+    }
+
+    private String resolveImportTitle(String title, String filename) {
+        if (StringUtils.hasText(title)) {
+            return title.trim();
+        }
+        if (!StringUtils.hasText(filename)) {
+            return "导入文档";
+        }
+        String normalized = filename.trim();
+        int dot = normalized.lastIndexOf('.');
+        if (dot > 0) {
+            normalized = normalized.substring(0, dot);
+        }
+        return StringUtils.hasText(normalized) ? normalized : "导入文档";
     }
 
     private boolean tryStructureWithAi(NoteVO note, Long userId) {

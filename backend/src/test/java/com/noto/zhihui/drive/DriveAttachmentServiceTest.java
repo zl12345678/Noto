@@ -45,9 +45,9 @@ class DriveAttachmentServiceTest extends AbstractIntegrationTest {
         );
         attachmentService.upload(note.getId(), file, userId);
 
-        assertDoesNotThrow(() -> attachmentService.listByWorkspace(workspaceId, null, null, null, null, userId));
-        assertDoesNotThrow(() -> attachmentService.listByWorkspace(workspaceId, null, true, null, null, userId));
-        assertDoesNotThrow(() -> attachmentService.listByWorkspace(workspaceId, null, null, null, true, userId));
+        assertDoesNotThrow(() -> attachmentService.listByWorkspace(workspaceId, null, null, null, null, null, userId));
+        assertDoesNotThrow(() -> attachmentService.listByWorkspace(workspaceId, null, true, null, null, null, userId));
+        assertDoesNotThrow(() -> attachmentService.listByWorkspace(workspaceId, null, null, null, true, null, userId));
         assertDoesNotThrow(() -> attachmentService.listByNote(note.getId(), userId));
     }
 }

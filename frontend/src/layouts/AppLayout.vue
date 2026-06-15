@@ -100,19 +100,15 @@
             class="side-menu knowledge-menu"
             @click="handleMenuClick"
           >
-            <a-menu-item v-for="kb in filteredKnowledgeBases" :key="kb.key">
-              <a-dropdown :trigger="['contextmenu']">
-                <span class="entry-item knowledge-entry">
-                  <span class="entry-dot" :class="kb.dotClass"></span>
-                  <span class="knowledge-name">{{ kb.label }}</span>
-                </span>
-                <template #overlay>
-                  <a-menu @click="(event) => handleKnowledgeAction(event, kb)">
-                    <a-menu-item key="edit">编辑</a-menu-item>
-                    <a-menu-item key="delete" danger>删除</a-menu-item>
-                  </a-menu>
-                </template>
-              </a-dropdown>
+            <a-menu-item
+              v-for="kb in filteredKnowledgeBases"
+              :key="kb.key"
+              @contextmenu.prevent="openKnowledgeContextMenu($event, kb)"
+            >
+              <span class="entry-item knowledge-entry">
+                <span class="entry-dot" :class="kb.dotClass"></span>
+                <span class="knowledge-name">{{ kb.label }}</span>
+              </span>
             </a-menu-item>
           </a-menu>
           <div v-else class="knowledge-empty">
@@ -183,6 +179,29 @@
               <a-menu class="user-menu">
                 <a-menu-item key="profile" @click="goProfile">个人中心</a-menu-item>
                 <a-menu-item key="shortcuts" @click="shortcutsOpen = true">键盘快捷键</a-menu-item>
+                <a-sub-menu key="theme" title="外观">
+                  <a-menu-item
+                    key="theme-light"
+                    :class="{ 'theme-menu-active': themeStore.mode === 'light' }"
+                    @click="themeStore.setMode('light')"
+                  >
+                    浅色
+                  </a-menu-item>
+                  <a-menu-item
+                    key="theme-dark"
+                    :class="{ 'theme-menu-active': themeStore.mode === 'dark' }"
+                    @click="themeStore.setMode('dark')"
+                  >
+                    深色
+                  </a-menu-item>
+                  <a-menu-item
+                    key="theme-system"
+                    :class="{ 'theme-menu-active': themeStore.mode === 'system' }"
+                    @click="themeStore.setMode('system')"
+                  >
+                    跟随系统
+                  </a-menu-item>
+                </a-sub-menu>
                 <a-menu-item key="email" disabled>
                   {{ authStore.currentUser?.email || '未获取邮箱' }}
                 </a-menu-item>
@@ -249,6 +268,23 @@
       :default-workspace-id="primaryWorkspaceId"
     />
     <KeyboardShortcutsModal v-model:open="shortcutsOpen" />
+
+    <a-dropdown
+      v-model:open="knowledgeContextOpen"
+      :trigger="[]"
+      overlay-class-name="knowledge-context-dropdown"
+    >
+      <span
+        class="knowledge-context-anchor"
+        :style="{ left: `${knowledgeContextPos.x}px`, top: `${knowledgeContextPos.y}px` }"
+      />
+      <template #overlay>
+        <a-menu @click="onKnowledgeContextMenuSelect">
+          <a-menu-item key="edit">编辑</a-menu-item>
+          <a-menu-item key="delete" danger>删除</a-menu-item>
+        </a-menu>
+      </template>
+    </a-dropdown>
   </a-layout>
 </template>
 
@@ -275,6 +311,7 @@ import ModuleTabBar from '../components/layout/ModuleTabBar.vue';
 import CommandPalette from '../components/command/CommandPalette.vue';
 import KeyboardShortcutsModal from '../components/help/KeyboardShortcutsModal.vue';
 import { useModuleTabsStore } from '../store/moduleTabs';
+import { useThemeStore } from '../store/theme';
 import { resolveModuleTabMeta } from '../utils/moduleTabMeta';
 
 const authStore = useAuthStore();
@@ -283,6 +320,7 @@ const todoSummary = useTodoSummaryStore();
 const workspaceStore = useWorkspaceStore();
 const aiPrefsStore = useAiPrefsStore();
 const moduleTabs = useModuleTabsStore();
+const themeStore = useThemeStore();
 useReminderNotifier();
 useDigestNotifier();
 useOverdueNotifier();
@@ -310,6 +348,10 @@ type KnowledgeBaseItem = {
   dotClass: string;
   description?: string | null;
 };
+
+const knowledgeContextOpen = ref(false);
+const knowledgeContextPos = reactive({ x: 0, y: 0 });
+const knowledgeContextKb = ref<KnowledgeBaseItem | null>(null);
 
 const DOT_CLASSES = ['blue', 'green', 'orange', 'purple', 'cyan'];
 
@@ -513,6 +555,20 @@ async function handleSaveWorkspace() {
   } finally {
     workspaceSaving.value = false;
   }
+}
+
+function openKnowledgeContextMenu(event: MouseEvent, kb: KnowledgeBaseItem) {
+  knowledgeContextKb.value = kb;
+  knowledgeContextPos.x = event.clientX;
+  knowledgeContextPos.y = event.clientY;
+  knowledgeContextOpen.value = true;
+}
+
+function onKnowledgeContextMenuSelect({ key }: { key: string }) {
+  knowledgeContextOpen.value = false;
+  const kb = knowledgeContextKb.value;
+  if (!kb) return;
+  handleKnowledgeAction({ key }, kb);
 }
 
 function handleKnowledgeAction({ key }: { key: string }, kb: KnowledgeBaseItem) {
@@ -930,6 +986,11 @@ function handleMenuClick({ key }: { key: string }) {
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
+:root[data-theme='dark'] .header {
+  background: rgba(26, 35, 50, 0.92);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+}
+
 .header-compact {
   height: 44px !important;
   min-height: 44px !important;
@@ -1075,5 +1136,18 @@ function handleMenuClick({ key }: { key: string }) {
 
 .user-menu {
   min-width: 220px;
+}
+
+.user-menu :deep(.theme-menu-active) {
+  color: var(--noto-accent-deep);
+  font-weight: 600;
+}
+
+.knowledge-context-anchor {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+  z-index: 0;
 }
 </style>

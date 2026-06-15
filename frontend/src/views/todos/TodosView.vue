@@ -39,6 +39,12 @@
           @change="reloadBoard"
         />
         <a-segmented v-model:value="viewMode" :options="viewOptions" @change="handleViewChange" />
+        <a-segmented
+          v-if="viewMode === 'board'"
+          v-model:value="boardDensity"
+          size="small"
+          :options="densityOptions"
+        />
         <a-button :loading="icsExporting" @click="handleExportIcs">导出 ICS</a-button>
       </a-space>
     </a-card>
@@ -51,6 +57,7 @@
     />
 
     <template v-if="viewMode === 'board'">
+      <div :class="['board-shell', densityClass]">
       <a-card
         v-if="!boardLoading && isBoardEmpty"
         class="board-empty-card noto-surface-card"
@@ -111,6 +118,7 @@
           </a-space>
         </EmptyState>
       </a-card>
+      </div>
     </template>
 
     <a-card v-else class="todos-table-card" :bordered="false">
@@ -274,10 +282,17 @@ import EmptyState from '../../components/common/EmptyState.vue';
 import NoteSelect from '../../components/note/NoteSelect.vue';
 import { isVagueTodoTitle, buildPostponedDueAt } from '../../utils/todoAssist';
 import { useTodoSummaryStore } from '../../store/todoSummary';
+import { useBoardDensity } from '../../composables/useBoardDensity';
 
 const route = useRoute();
 const router = useRouter();
 const todoSummary = useTodoSummaryStore();
+const { density: boardDensity, densityClass } = useBoardDensity();
+
+const densityOptions = [
+  { label: '标准', value: 'comfortable' },
+  { label: '紧凑', value: 'compact' },
+];
 
 const viewMode = ref<'board' | 'all'>(route.query.view === 'all' ? 'all' : 'board');
 const viewOptions = [
@@ -897,5 +912,21 @@ onMounted(async () => {
   margin-left: 6px;
   color: #98a2b3;
   font-size: 12px;
+}
+
+.board-shell.board-density--compact :deep(.parallel-card) {
+  padding: 8px 10px;
+}
+
+.board-shell.board-density--compact :deep(.parallel-card h4) {
+  font-size: 13px;
+}
+
+.board-shell.board-density--compact :deep(.action-row) {
+  padding: 6px 10px;
+}
+
+.board-shell.board-density--compact :deep(.action-title) {
+  font-size: 13px;
 }
 </style>

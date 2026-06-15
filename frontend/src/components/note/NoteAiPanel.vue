@@ -176,8 +176,12 @@
           @click="runReindex"
         >
           <ReloadOutlined />
-          <span>重建索引</span>
+          <span>{{ reindexing ? '索引中…' : '重建索引' }}</span>
         </button>
+        <p v-if="aiEnabled && ragStatus" class="rag-status-line">
+          知识库向量：{{ ragStatus.indexedChunks }} 片段
+          <span v-if="!ragStatus.ragAvailable" class="rag-status-warn">（未启用 pgvector）</span>
+        </p>
       </section>
 
       <section v-show="activeTab === 'related'" class="tab-panel">
@@ -216,7 +220,9 @@ import {
 import {
   askAiStream,
   reindexNoteRag,
+  getNoteRagStatus,
   stripKnowledgeGaps,
+  type NoteRagIndexStatus,
   summarizeNoteByAi,
   transformNoteByAi,
   transformSelectionStream,
@@ -274,6 +280,7 @@ const selectionLoading = ref<SelectionTransformMode | null>(null);
 const asking = ref(false);
 const loadingRelated = ref(false);
 const reindexing = ref(false);
+const ragStatus = ref<NoteRagIndexStatus | null>(null);
 const questionInput = ref('');
 const relatedNotes = ref<Note[]>([]);
 const autoSummaryOnSave = ref(localStorage.getItem(AUTO_SUMMARY_KEY) === 'true');
@@ -341,11 +348,24 @@ const runReindex = async () => {
   reindexing.value = true;
   try {
     const result = await reindexNoteRag(props.noteId);
-    message.success(`已索引 ${result.indexedChunks} 个片段`);
+    message.success(`本篇已索引 ${result.indexedChunks} 个片段`);
+    await loadRagStatus();
   } catch (error: any) {
     message.error(error?.message || '重建索引失败');
   } finally {
     reindexing.value = false;
+  }
+};
+
+const loadRagStatus = async () => {
+  if (!props.aiEnabled || !props.workspaceId) {
+    ragStatus.value = null;
+    return;
+  }
+  try {
+    ragStatus.value = await getNoteRagStatus(props.workspaceId);
+  } catch {
+    ragStatus.value = null;
   }
 };
 
@@ -490,6 +510,14 @@ watch(
     clearPreview();
     questionInput.value = '';
     void loadRelated();
+  },
+  { immediate: true },
+);
+
+watch(
+  () => [props.workspaceId, props.aiEnabled] as const,
+  () => {
+    void loadRagStatus();
   },
   { immediate: true },
 );
@@ -802,6 +830,17 @@ defineExpose({
   font-weight: 500;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s, transform 0.12s, box-shadow 0.15s;
+}
+
+.rag-status-line {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--ai-muted);
+  line-height: 1.45;
+}
+
+.rag-status-warn {
+  color: #d97706;
 }
 
 .action-chip--flat {

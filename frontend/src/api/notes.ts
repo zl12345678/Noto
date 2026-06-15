@@ -138,3 +138,22 @@ export interface NoteImportResult {
 export function importNoteClip(payload: NoteClipImportRequest) {
   return http.post<NoteImportResult>('/notes/import', payload);
 }
+
+export function importNoteFile(
+  workspaceId: string,
+  file: File,
+  folderId?: string | null,
+  title?: string,
+) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return http.post<NoteImportResult>('/notes/import/file', formData, {
+    params: {
+      workspaceId,
+      ...(folderId ? { folderId } : {}),
+      ...(title ? { title } : {}),
+    },
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 60000,
+  });
+}
