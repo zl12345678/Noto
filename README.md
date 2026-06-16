@@ -84,52 +84,35 @@ Noto_知微/
 
 ## 快速启动
 
-> 完整步骤（开发 / 演示 / 生产）见 **[docs/DEV_DEPLOY.md](docs/DEV_DEPLOY.md)**。
+> **命令速查（开发 / 演示 / 生产 / APK）→ [docs/COMMANDS.md](docs/COMMANDS.md)**  
+> 部署细节 → [docs/DEV_DEPLOY.md](docs/DEV_DEPLOY.md)
 
-### 1. 环境要求
-
-- JDK 17+
-- Maven
-- Node.js 18+
-- PostgreSQL（默认库 `noto_zhihui_dev`）
-
-### 2. 数据库（Docker Desktop 推荐）
+### 日常开发（三步）
 
 ```powershell
-# 一键启动 PostgreSQL（pgvector）+ MinIO
-.\scripts\dev-up.ps1
+.\scripts\dev-up.ps1              # Docker：PostgreSQL + MinIO
+cd backend; .\dev.ps1 -WatchCompile   # 后端 → :9086
+cd ..\frontend; npm run dev       # 前端 → :5173
 ```
 
-首次运行会从 `.env.example` 生成 `.env`（库名 `noto_zhihui_dev`，与 `application-dev.yml` 一致）。
+浏览器：**http://localhost:5173** · 默认账号 `admin` / `admin123`
 
-也可手动按 `建表SQL.sql` 初始化 PostgreSQL；后端启动时会自动执行 schema 补丁（含 pgvector 列与 RAG 索引）。
+### 其他场景
 
-### 3. 启动后端
+| 场景 | 命令 |
+|------|------|
+| Docker 演示 | `.\scripts\demo-up.ps1` → http://localhost:8080 |
+| 生产上线 | Linux：`./deploy/prod-up.sh`（见 [deploy/README.md](deploy/README.md)） |
+| Android APK | `.\scripts\build-apk.ps1` |
 
-```powershell
-cd backend
-.\dev.ps1 -WatchCompile
-```
+### 环境要求
 
-或使用 Cursor / VS Code 运行配置 **Backend (DevTools 热部署)**。
+- **后端**：JDK 17、Maven、Node.js 18+
+- **Android 打包**：另需 JDK 21（Android Studio JBR）与 Android SDK → 见 [docs/BUILD_APK.md](docs/BUILD_APK.md)
 
-健康检查：
+### 启用 AI（可选）
 
-```text
-GET http://localhost:9086/api/v1/health
-```
-
-### 4. 启动前端
-
-```powershell
-cd frontend
-npm install
-npm run dev
-```
-
-### 5. 启用 AI（可选）
-
-AI 基于 LangChain4j 调用通义千问，需配置 DashScope API Key：
+需配置通义千问 DashScope API Key：
 
 **方式 A：环境变量（推荐）**
 
@@ -159,26 +142,36 @@ noto:
 
 ---
 
-## Docker 一键部署（推荐演示/生产）
+## Docker 演示 / 生产
 
-### 1. 准备环境
+> 命令速查 → **[docs/COMMANDS.md](docs/COMMANDS.md)** ② 演示、③ 生产
+
+```powershell
+copy .env.example .env    # 首次：编辑 JWT、AI Key 等
+.\scripts\demo-up.ps1     # 演示 → http://localhost:8080
+.\scripts\demo-down.ps1   # 停止
+```
+
+云服务器上线 → [deploy/README.md](deploy/README.md)
+
+<details>
+<summary>展开：手动 docker compose 与端口说明</summary>
+
+### 准备环境
 
 - 安装 [Docker Desktop](https://www.docker.com/products/docker-desktop/)（含 Docker Compose）
 
-### 2. 配置环境变量
+### 配置环境变量
 
 ```powershell
-cd e:\Noto_知微
+cd e:\Noto
 copy .env.example .env
 # 编辑 .env：至少修改 NOTO_JWT_SECRET；启用 AI 时设置 NOTO_AI_ENABLED 与 AI_DASHSCOPE_API_KEY
 ```
 
-### 3. 启动
+### 启动
 
 ```powershell
-# 推荐：一键演示（含预置笔记/待办）
-.\scripts\demo-up.ps1
-
 # 或手动
 docker compose up -d --build
 ```
@@ -211,33 +204,9 @@ Docker 环境默认启用 MinIO（`NOTO_MINIO_ENABLED=true`），笔记编辑器
 
 **端口冲突**：若 9086 已被本地后端占用，运行 `.\scripts\demo-up.ps1` 会自动停止本地进程；保留本地后端时用 `.\scripts\demo-up.ps1 -InfraOnly` 或 `.\scripts\dev-up.ps1`（仅启 db/minio）。
 
-### 本地开发启用 MinIO
+</details>
 
-**推荐（国内镜像）：**
-
-```powershell
-cd e:\Noto_知微
-.\scripts\start-minio.ps1
-```
-
-脚本会依次尝试 DaoCloud 等国内源拉取镜像。手动拉取示例：
-
-```powershell
-docker pull docker.m.daocloud.io/minio/minio:RELEASE.2024-12-18T13-15-44Z
-docker tag docker.m.daocloud.io/minio/minio:RELEASE.2024-12-18T13-15-44Z minio/minio:RELEASE.2024-12-18T13-15-44Z
-```
-
-Docker Engine 建议优先配置：`https://docker.m.daocloud.io`（DaoCloud，比 `docker.1ms.run` 更稳定）。
-
-`application-dev.yml` 设置 `noto.minio.enabled=true` 后重启后端即可上传图片。
-
-### 4. 常用命令
-
-```powershell
-docker compose logs -f backend    # 查看后端日志
-docker compose down               # 停止并移除容器
-docker compose down -v            # 停止并清空数据库卷（慎用）
-```
+MinIO 与数据库由 `dev-up.ps1` / `demo-up.ps1` 一并启动，无需单独脚本。更多命令 → [docs/COMMANDS.md](docs/COMMANDS.md)。
 
 ---
 

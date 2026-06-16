@@ -1,7 +1,7 @@
 # Noto · 知微 — 开发与部署指南
 
-> 本文梳理 **本地开发** 与 **Docker 演示/生产部署** 的完整流程。  
-> 快速功能说明见 [README.md](../README.md)，发版前自测见 [E2E_CHECKLIST.md](./E2E_CHECKLIST.md)。
+> **命令速查 → [COMMANDS.md](./COMMANDS.md)**（开发 / 演示 / 生产 / APK，一页搞定）  
+> 本文是详细说明：环境变量、配置、故障排查。功能概览见 [README.md](../README.md)。
 
 ---
 

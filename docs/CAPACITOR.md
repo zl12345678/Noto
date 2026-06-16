@@ -2,6 +2,8 @@
 
 前端仍是一套 Vue 代码；Capacitor 把 `frontend/dist` 打进 WebView，生成可安装的 App。
 
+**在 Cursor / 终端打 APK（Debug / Release）** → [BUILD_APK.md](./BUILD_APK.md)
+
 ## 环境
 
 | 平台 | 需要 |
