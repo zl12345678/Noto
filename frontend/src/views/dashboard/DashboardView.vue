@@ -44,10 +44,10 @@
         </div>
       </div>
 
-      <div class="loop-workflow">
+      <div class="loop-workflow" :class="{ 'loop-workflow--mobile': isMobile }">
         <ActionWorkflowBoard
           variant="hero"
-          :show-guide="false"
+          :show-guide="!isMobile"
           :loading="loading"
           :action-todos="stats?.actionTodos || []"
           :parallel-todos="stats?.parallelTodos || []"
@@ -299,6 +299,7 @@ import {
 import TodoReminderModal from '../../components/todo/TodoReminderModal.vue';
 import { buildPostponedDueAt } from '../../utils/todoAssist';
 import ActionWorkflowBoard, { type WorkflowStageKey } from '../../components/todo/ActionWorkflowBoard.vue';
+import { useBreakpoint } from '../../composables/useBreakpoint';
 import QuickStartModal from '../../components/onboarding/QuickStartModal.vue';
 import EmptyState from '../../components/common/EmptyState.vue';
 import TodoExtractReviewModal from '../../components/todo/TodoExtractReviewModal.vue';
@@ -313,6 +314,7 @@ import type { WorkflowDropEvent } from '../../utils/workflowDrag';
 
 const router = useRouter();
 const route = useRoute();
+const { isMobile } = useBreakpoint();
 const todoSummary = useTodoSummaryStore();
 const loading = ref(false);
 const digestLoading = ref(false);

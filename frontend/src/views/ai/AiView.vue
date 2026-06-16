@@ -1,6 +1,6 @@
 <template>
-  <div class="ai-page">
-    <aside class="session-sidebar">
+  <div class="ai-page" :class="{ 'ai-page--mobile': isMobile }">
+    <aside v-if="!isMobile" class="session-sidebar">
       <div class="sidebar-head">
         <div class="sidebar-head-text">
           <h3>历史会话</h3>
@@ -41,7 +41,39 @@
     </aside>
 
     <section class="chat-panel">
-      <header class="chat-topbar">
+      <header v-if="isMobile" class="chat-topbar chat-topbar--mobile">
+        <a-button type="text" class="mobile-ai-icon-btn" aria-label="历史会话" @click="sessionDrawerOpen = true">
+          <UnorderedListOutlined />
+        </a-button>
+        <a-select
+          v-model:value="aiChat.workspaceId"
+          placeholder="知识库"
+          size="small"
+          class="mobile-ai-workspace"
+          :options="workspaceOptions"
+          :bordered="false"
+          @change="onWorkspaceChange"
+        />
+        <span class="status-pill status-pill--compact" :class="{ 'status-pill--on': aiStatus?.enabled }">
+          {{ aiStatus?.enabled ? '在线' : '关' }}
+        </span>
+        <a-dropdown trigger="click" placement="bottomRight">
+          <a-button type="text" class="mobile-ai-icon-btn" aria-label="更多">
+            <MoreOutlined />
+          </a-button>
+          <template #overlay>
+            <a-menu @click="onMobileAiMenu">
+              <a-menu-item key="new">新对话</a-menu-item>
+              <a-menu-item key="scope">{{ aiChat.scope === 'note' ? '切换：知识库问答' : '切换：单篇文档' }}</a-menu-item>
+              <a-menu-item key="synthesize">跨文档合成</a-menu-item>
+              <a-menu-divider />
+              <a-menu-item key="clear" danger :disabled="!aiChat.messages.length && !aiChat.sessionId">清空当前</a-menu-item>
+            </a-menu>
+          </template>
+        </a-dropdown>
+      </header>
+
+      <header v-else class="chat-topbar">
         <div class="chat-topbar-filters">
           <a-select
             v-model:value="aiChat.workspaceId"
@@ -75,6 +107,46 @@
         </div>
       </header>
 
+      <a-drawer
+        v-if="isMobile"
+        v-model:open="sessionDrawerOpen"
+        title="历史会话"
+        placement="left"
+        :width="sessionDrawerWidth"
+        class="ai-session-drawer"
+      >
+        <a-button type="primary" block class="drawer-new-chat" @click="onDrawerNewChat">新对话</a-button>
+        <a-spin :spinning="loadingSessions">
+          <ul v-if="sessions.length" class="session-list session-list--drawer">
+            <li
+              v-for="item in sessions"
+              :key="item.id"
+              class="session-item"
+              :class="{ active: aiChat.sessionId === String(item.id) }"
+              @click="onDrawerOpenSession(item)"
+            >
+              <div class="session-item-body">
+                <span class="session-title">{{ item.title || '新对话' }}</span>
+                <span class="session-meta">
+                  {{ item.scope === 'note' ? '单篇' : '知识库' }}
+                  · {{ formatSessionTime(item.latestMessageAt || item.createdAt) }}
+                </span>
+              </div>
+              <button
+                type="button"
+                class="session-delete-btn session-delete-btn--visible"
+                aria-label="删除会话"
+                :disabled="deletingSessionId === String(item.id)"
+                @click.stop="handleDeleteSession(item)"
+              >
+                ×
+              </button>
+            </li>
+          </ul>
+          <div v-else class="session-empty">暂无历史会话</div>
+        </a-spin>
+      </a-drawer>
+
       <NoteSynthesizeModal
         v-model:open="synthesizeOpen"
         :workspaces="workspaces"
@@ -88,7 +160,7 @@
         </div>
         <div v-else ref="chatLogRef" :key="chatLogKey" class="chat-log">
           <div v-if="aiChat.messages.length === 0 && !processing" class="chat-empty">
-            <p class="empty-title">说出你的需求，我来操控文档、待办、提醒、网盘与分享</p>
+            <p class="empty-title">{{ isMobile ? '问文档、待办、网盘或让我帮你办事' : '说出你的需求，我来操控文档、待办、提醒、网盘与分享' }}</p>
           </div>
 
           <div v-for="(item, index) in aiChat.messages" :key="messageKey(item, index)" class="chat-item" :class="item.role">
@@ -151,14 +223,14 @@
         </div>
       </div>
 
-      <footer class="chat-footer">
+      <footer class="chat-footer" :class="{ 'chat-footer--mobile': isMobile }">
         <div v-if="aiChat.messages.length === 0" class="quick-chips">
           <button
-            v-for="(sample, idx) in quickSamples"
+            v-for="(sample, idx) in isMobile ? mobileQuickSamples : quickSamples"
             :key="idx"
             type="button"
             class="sample-chip"
-            @click="questionInput = sample"
+            @click="applyQuickSample(sample)"
           >
             {{ sample }}
           </button>
@@ -168,23 +240,25 @@
           <a-segmented
             v-model:value="inputMode"
             size="small"
+            block
+            class="chat-mode-segmented"
             :options="inputModeOptions"
           />
-          <span class="mode-hint">{{ inputModeHint }}</span>
+          <span v-if="!isMobile" class="mode-hint">{{ inputModeHint }}</span>
         </div>
 
-        <div class="chat-input">
+        <div class="chat-input" :class="{ 'chat-input--mobile': isMobile }">
           <a-textarea
             v-model:value="questionInput"
-            :rows="2"
-            :auto-size="{ minRows: 2, maxRows: 6 }"
-            placeholder="例如：灵感有哪些文档 / 网盘有哪些文件 / 分享这篇文档 / 给文档打标签"
+            :rows="isMobile ? 1 : 2"
+            :auto-size="isMobile ? { minRows: 1, maxRows: 4 } : { minRows: 2, maxRows: 6 }"
+            :placeholder="isMobile ? '输入问题…' : '例如：灵感有哪些文档 / 网盘有哪些文件 / 分享这篇文档 / 给文档打标签'"
             @pressEnter="handleSend"
           />
           <a-button type="primary" :loading="processing" @click="handleSend">发送</a-button>
         </div>
 
-        <details v-if="agentTasks.length" class="task-history">
+        <details v-if="!isMobile && agentTasks.length" class="task-history">
           <summary>最近办事记录（{{ agentTasks.length }}）</summary>
           <ul class="task-list">
             <li v-for="item in agentTasks" :key="item.id" class="task-item">
@@ -203,6 +277,7 @@ import { computed, nextTick, onDeactivated, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import dayjs from 'dayjs';
 import { message, Modal } from 'ant-design-vue';
+import { MoreOutlined, UnorderedListOutlined } from '@ant-design/icons-vue';
 import {
   askAiStream,
   createAiChatSession,
@@ -239,8 +314,11 @@ import {
 import { createNoteFromGap as createGapNote, sortReferencesByRelevance } from '../../utils/knowledgeGap';
 import { isReadOnlyListTask } from '../../utils/aiMessageFormat';
 import { QUICK_INSTRUCTIONS } from '../../utils/agentStepPresentation';
+import { useBreakpoint } from '../../composables/useBreakpoint';
 
 defineOptions({ name: 'AiView' });
+
+const { isMobile } = useBreakpoint();
 
 const route = useRoute();
 const router = useRouter();
@@ -258,7 +336,13 @@ const processing = ref(false);
 const processingHint = ref('思考中…');
 const questionInput = ref('');
 const synthesizeOpen = ref(false);
+const sessionDrawerOpen = ref(false);
 const chatLogRef = ref<HTMLElement | null>(null);
+
+const sessionDrawerWidth = computed(() => {
+  if (typeof window === 'undefined') return 300;
+  return Math.min(320, Math.floor(window.innerWidth * 0.86));
+});
 const inputMode = ref<AiInputMode>(
   (localStorage.getItem('noto-ai-input-mode') as AiInputMode) || 'agent',
 );
@@ -289,6 +373,40 @@ watch(inputMode, (value) => {
 });
 
 const quickSamples = QUICK_INSTRUCTIONS.slice(0, 4);
+
+const mobileQuickSamples = computed(() => QUICK_INSTRUCTIONS.slice(0, 3));
+
+const applyQuickSample = (sample: string) => {
+  questionInput.value = sample;
+};
+
+function onMobileAiMenu({ key }: { key: string }) {
+  if (key === 'new') {
+    handleNewChat();
+    return;
+  }
+  if (key === 'scope') {
+    aiChat.scope = aiChat.scope === 'note' ? 'workspace' : 'note';
+    return;
+  }
+  if (key === 'synthesize') {
+    synthesizeOpen.value = true;
+    return;
+  }
+  if (key === 'clear') {
+    handleClearChat();
+  }
+}
+
+function onDrawerNewChat() {
+  sessionDrawerOpen.value = false;
+  handleNewChat();
+}
+
+async function onDrawerOpenSession(session: AiChatSession) {
+  sessionDrawerOpen.value = false;
+  await openSession(session);
+}
 
 const workspaceOptions = computed(() =>
   workspaces.value.map((item) => ({ label: item.name, value: item.id })),
@@ -1215,13 +1333,197 @@ onMounted(async () => {
     border-bottom: 1px solid var(--noto-border, #e2e8f0);
   }
 
-  .chat-topbar {
+  .chat-topbar:not(.chat-topbar--mobile) {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .chat-topbar-actions {
+  .chat-topbar:not(.chat-topbar--mobile) .chat-topbar-actions {
     justify-content: flex-end;
   }
+}
+
+/* 移动 Web：单列聊天，会话进抽屉 */
+.ai-page--mobile {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  grid-template-columns: unset;
+  grid-template-rows: unset;
+  background: var(--noto-canvas, #f7f6f3);
+}
+
+.ai-page--mobile .chat-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-topbar--mobile {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  min-height: 44px;
+  border-bottom: 1px solid var(--noto-border, #e2e8f0);
+  background: var(--noto-surface-solid, #fff);
+}
+
+.mobile-ai-icon-btn {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-ai-workspace {
+  flex: 1;
+  min-width: 0;
+}
+
+.mobile-ai-workspace :deep(.ant-select-selector) {
+  padding-left: 4px !important;
+}
+
+.status-pill--compact {
+  flex-shrink: 0;
+  font-size: 10px;
+  padding: 2px 6px;
+}
+
+.drawer-new-chat {
+  margin-bottom: 12px;
+}
+
+.session-list--drawer {
+  max-height: none;
+  padding-top: 4px;
+}
+
+.session-delete-btn--visible {
+  opacity: 1;
+}
+
+.ai-page--mobile .chat-log-wrap {
+  flex: 1;
+  min-height: 0;
+}
+
+.ai-page--mobile .chat-log {
+  padding: 12px 12px 16px;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.ai-page--mobile .chat-item {
+  margin-bottom: 10px;
+}
+
+.ai-page--mobile .bubble {
+  max-width: 92%;
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+.ai-page--mobile .bubble-agent {
+  max-width: 96%;
+}
+
+.ai-page--mobile .bubble-head {
+  margin-bottom: 4px;
+}
+
+.ai-page--mobile .bubble-role {
+  font-size: 11px;
+}
+
+.ai-page--mobile .empty-title {
+  font-size: 13px;
+  text-align: center;
+  padding: 0 12px;
+  line-height: 1.55;
+}
+
+.ai-page--mobile .chat-footer--mobile {
+  padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0));
+  background: var(--noto-surface-solid, #fff);
+  border-top: 1px solid var(--noto-border, #e2e8f0);
+  box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.04);
+}
+
+.ai-page--mobile .quick-chips {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 0 8px;
+  gap: 6px;
+  overscroll-behavior-x: contain;
+}
+
+.ai-page--mobile .sample-chip {
+  flex-shrink: 0;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  padding: 4px 10px;
+}
+
+.ai-page--mobile .chat-input-toolbar {
+  padding-top: 0;
+  margin-bottom: 6px;
+}
+
+.ai-page--mobile .chat-mode-segmented {
+  width: 100%;
+}
+
+.ai-page--mobile .chat-mode-segmented :deep(.ant-segmented) {
+  width: 100%;
+}
+
+.ai-page--mobile .chat-input--mobile {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding-top: 0;
+}
+
+.ai-page--mobile .chat-input--mobile .ant-input-textarea {
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-page--mobile .chat-input--mobile .ant-btn {
+  flex-shrink: 0;
+  height: 40px;
+  padding-inline: 16px;
+  margin-top: 0;
+  width: auto;
+}
+
+.ai-page--mobile .refs,
+.ai-page--mobile .knowledge-gaps {
+  margin-top: 8px;
+}
+
+.ai-page--mobile .refs-title {
+  font-size: 11px;
+}
+
+.ai-page--mobile .ref-tag {
+  margin-bottom: 4px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>

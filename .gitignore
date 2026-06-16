@@ -46,8 +46,19 @@ backups/
 
 # Frontend dependencies / builds
 node_modules/
+**/node_modules/
 dist/
+**/dist/
+frontend/dist/
+frontend/android/
+frontend/ios/
 coverage/
+**/.vite/
+
+# IDE (local only)
+.idea/
+**/.idea/
+*.iml
 
 # Python caches if any tooling is used
 __pycache__/

@@ -1,0 +1,473 @@
+/**
+ * 移动 Web Phase A — 全局 touch / safe-area / 页面壳
+ * 断点逻辑见 composables/useBreakpoint.ts（768px）
+ */
+
+html.mobile-active,
+html.mobile-active body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* 不裁切主滚动区：用 max-width + 局部 scroll-x 容器，避免整页横滑又避免内容被切掉 */
+.mobile-layout {
+  width: 100%;
+  max-width: 100%;
+}
+
+.mobile-layout .mobile-main:not(.mobile-main--ai) {
+  max-width: 100%;
+  overflow-x: visible;
+  overflow-y: auto;
+}
+
+.mobile-layout .mobile-router-outlet {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.mobile-layout .noto-page,
+.mobile-layout .ant-card,
+.mobile-layout .ant-card-body {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.mobile-layout .ant-row,
+.mobile-layout .ant-col {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* 筛选条：取消桌面 min-width，改为纵向堆叠 */
+.mobile-layout .drive-filters,
+.mobile-layout .drive-filters.ant-space,
+.mobile-layout .todos-hero .hero-row + .ant-space,
+.mobile-layout .todos-page .todo-filters,
+.mobile-layout .search-page .search-filters,
+.mobile-layout .table-filters {
+  width: 100% !important;
+  max-width: 100%;
+}
+
+.mobile-layout .drive-filters .ant-select,
+.mobile-layout .drive-filters .ant-input-search,
+.mobile-layout .todos-page .ant-select,
+.mobile-layout .todos-page .ant-input-search,
+.mobile-layout .search-page .ant-select,
+.mobile-layout .search-page .ant-input-search,
+.mobile-layout .table-filters .ant-select,
+.mobile-layout .table-filters .ant-input-search {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.mobile-layout .drive-hero .hero-row,
+.mobile-layout .todos-hero .hero-row {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.mobile-layout .drive-hero .hero-row .ant-upload,
+.mobile-layout .todos-hero .hero-row .ant-btn {
+  width: 100%;
+}
+
+.mobile-layout .explorer-toolbar {
+  flex-wrap: wrap;
+}
+
+.mobile-layout .explorer-toolbar-actions {
+  flex-wrap: wrap;
+  width: 100%;
+  justify-content: flex-start;
+}
+
+/* 网盘：卡片不裁切，表格区域单独横滑 */
+.mobile-layout .drive-explorer-card {
+  max-width: 100%;
+  overflow: visible;
+}
+
+.mobile-layout .drive-file-table {
+  max-width: 100%;
+}
+
+.mobile-layout .drive-file-table :deep(.ant-table-content) {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-layout .workflow-board {
+  max-width: 100%;
+  overflow: visible;
+}
+
+/* 移动壳下强制纵向工作流（组件内断点是 900px，与 768 移动断点不一致） */
+.mobile-layout .workflow-track {
+  flex-direction: column !important;
+  overflow-x: visible !important;
+  max-width: 100%;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.mobile-layout .workflow-stage {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.mobile-layout .workflow-connector,
+.mobile-layout .workflow-connector--hero {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+}
+
+.mobile-layout .connector-arrow .connector-svg {
+  transform: rotate(90deg);
+}
+
+.mobile-layout .noto-stat-row.hero-meta {
+  flex-wrap: wrap;
+}
+
+.mobile-layout .ant-segmented {
+  max-width: 100%;
+}
+
+/* 分段控件过宽时在容器内横滑，不撑整页 */
+.mobile-layout .todo-filters,
+.mobile-layout .table-filters,
+.mobile-layout .explorer-toolbar-actions {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+.mobile-layout .todo-filters .ant-segmented,
+.mobile-layout .table-filters .ant-segmented {
+  width: max-content;
+  max-width: none;
+  min-width: min(100%, max-content);
+}
+
+.mobile-layout .table-toolbar .ant-space {
+  width: 100%;
+}
+
+.mobile-layout .profile-page .ant-form,
+.mobile-layout .profile-page .ant-card {
+  max-width: 100%;
+}
+
+.mobile-layout .my-shares-page :deep(.ant-table-wrapper),
+.mobile-layout .reminders-page :deep(.ant-table-wrapper) {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-layout img,
+.mobile-layout video,
+.mobile-layout pre,
+.mobile-layout .md-editor-preview-wrapper {
+  max-width: 100%;
+}
+
+.mobile-layout .safe-md-preview {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+.mobile-layout .safe-md-preview :deep(table) {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.mobile-layout .dashboard-page,
+.mobile-layout .todos-page,
+.mobile-layout .drive-page,
+.mobile-layout .search-page,
+.mobile-layout .profile-page {
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0));
+  min-width: 0;
+}
+
+/* 待办看板 / 表格：表格区域内部滚动 */
+.mobile-layout .todos-table-card :deep(.ant-table-wrapper) {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-layout .all-table {
+  max-width: 100%;
+}
+
+/* 笔记顶栏操作：允许换行 */
+.mobile-layout .notes-workspace .editor-topbar {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.mobile-layout .notes-workspace .editor-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 100%;
+}
+
+.mobile-layout .notes-workspace .editor-title-row .title-field,
+.mobile-layout .notes-workspace .read-title {
+  max-width: 100%;
+  word-break: break-word;
+}
+
+/* AI 顶栏筛选 */
+.mobile-layout .ai-page .chat-topbar-filters {
+  width: 100%;
+}
+
+.mobile-layout .ai-page .filter-select {
+  min-width: 0 !important;
+  flex: 1 1 45%;
+  max-width: 100%;
+}
+
+.mobile-layout .noto-page {
+  padding: 0;
+  max-width: 100%;
+}
+
+.mobile-layout .dashboard-page .loop-shell,
+.mobile-layout .dashboard-page .digest-card,
+.mobile-layout .dashboard-page .recent-card,
+.mobile-layout .dashboard-page .alert-card {
+  margin-bottom: 12px;
+}
+
+.mobile-layout .dashboard-page .loop-foot {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mobile-layout .dashboard-page .loop-foot .ant-btn {
+  flex: 1 1 auto;
+  min-width: calc(50% - 4px);
+}
+
+.mobile-layout .loop-workflow--mobile .workflow-track {
+  padding-bottom: 8px;
+}
+
+.mobile-layout .todos-page .todos-hero .hero-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.mobile-layout .todos-page .todo-filters {
+  width: 100%;
+}
+
+.mobile-layout .todos-page .todo-filters .ant-select {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.mobile-layout .search-page .search-filters .ant-select {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.mobile-layout .notes-workspace {
+  flex-direction: column;
+  height: auto;
+  min-height: calc(100dvh - 120px);
+}
+
+.mobile-layout .notes-workspace .tree-pane,
+.mobile-layout .notes-workspace .tree-rail {
+  display: none;
+}
+
+.mobile-layout .notes-workspace.notes-workspace--mobile-list .tree-pane {
+  display: flex;
+  flex-direction: column;
+  width: 100% !important;
+  max-width: 100%;
+  border-right: none;
+  min-height: 0;
+}
+
+.mobile-layout .notes-workspace.notes-workspace--mobile-list .editor-pane {
+  display: none;
+}
+
+.mobile-layout .notes-workspace.notes-workspace--mobile-read .editor-pane {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+}
+
+.mobile-layout .notes-workspace.notes-workspace--mobile-read .editor-shell {
+  min-height: 0;
+}
+
+.mobile-layout .notes-workspace .editor-actions .action-label {
+  display: none;
+}
+
+.mobile-layout .profile-page .profile-actions {
+  flex-direction: column;
+}
+
+.mobile-notes-hub {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 8px;
+}
+
+.mobile-notes-hub-search {
+  flex-shrink: 0;
+}
+
+.mobile-notes-kb-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mobile-notes-kb-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--noto-border);
+  border-radius: 12px;
+  background: var(--noto-surface-solid);
+  text-align: left;
+  touch-action: manipulation;
+}
+
+.mobile-notes-kb-item:active {
+  background: var(--noto-canvas);
+}
+
+.mobile-notes-kb-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--noto-accent-deep);
+  flex-shrink: 0;
+}
+
+.mobile-notes-kb-name {
+  flex: 1;
+  font-weight: 600;
+  color: var(--noto-text);
+}
+
+.mobile-notes-kb-arrow {
+  color: var(--noto-text-muted);
+}
+
+.mobile-dashboard-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mobile-todo-section {
+  border-radius: 12px;
+  border: 1px solid var(--noto-border);
+  background: var(--noto-surface-solid);
+  overflow: hidden;
+}
+
+.mobile-todo-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--noto-border-soft);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.mobile-todo-section-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--noto-text-muted);
+}
+
+.mobile-todo-card {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--noto-border-soft);
+}
+
+.mobile-todo-card:last-child {
+  border-bottom: none;
+}
+
+.mobile-todo-card-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--noto-text);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.mobile-todo-card-meta {
+  font-size: 12px;
+  color: var(--noto-text-muted);
+  margin-bottom: 10px;
+}
+
+.mobile-todo-card-meta.overdue {
+  color: #cf1322;
+}
+
+.mobile-todo-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mobile-todo-card-actions .ant-btn {
+  flex: 1 1 auto;
+  min-width: 72px;
+}
+
+.mobile-stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.mobile-stat-pill {
+  padding: 10px 8px;
+  border-radius: 10px;
+  background: var(--noto-surface-solid);
+  border: 1px solid var(--noto-border-soft);
+  text-align: center;
+}
+
+.mobile-stat-num {
+  display: block;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--noto-text);
+}
+
+.mobile-stat-label {
+  font-size: 11px;
+  color: var(--noto-text-muted);
+}

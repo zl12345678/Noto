@@ -18,8 +18,32 @@
     </a-card>
 
     <a-card class="shares-table-card noto-surface-card" :bordered="false" :loading="loading">
+      <ul v-if="isMobile && filteredShares.length" class="share-all-cards">
+        <li v-for="record in filteredShares" :key="record.token" class="share-all-card">
+          <div class="share-all-card-head">
+            <a-tag :color="typeColor(record.resourceType)" class="type-tag">
+              {{ typeLabel(record.resourceType) }}
+            </a-tag>
+            <span v-if="record.passwordProtected" class="share-all-chip">需密码</span>
+            <span class="share-all-chip">访问 {{ record.viewCount ?? 0 }}</span>
+          </div>
+          <p class="share-all-card-title">{{ record.title || '未命名' }}</p>
+          <p class="share-all-card-meta">
+            <span>{{ record.expiresAt ? formatTime(record.expiresAt) : '永久有效' }}</span>
+            <span v-if="record.createdAt">创建于 {{ formatTime(record.createdAt) }}</span>
+          </p>
+          <div class="share-all-card-actions">
+            <a-button type="link" size="small" @click="copyShare(record)">复制</a-button>
+            <a-button type="link" size="small" @click="openSharePage(record)">预览</a-button>
+            <a-button v-if="canOpenSource(record)" type="link" size="small" @click="openSource(record)">
+              来源
+            </a-button>
+            <a-button type="link" size="small" danger @click="handleRevoke(record)">关闭</a-button>
+          </div>
+        </li>
+      </ul>
       <a-table
-        v-if="filteredShares.length"
+        v-else-if="filteredShares.length"
         :data-source="filteredShares"
         :columns="columns"
         :pagination="false"
@@ -87,8 +111,10 @@ import {
   revokeShareByToken,
   type ShareLink,
 } from '../../api/share';
+import { useBreakpoint } from '../../composables/useBreakpoint';
 
 const router = useRouter();
+const { isMobile } = useBreakpoint();
 
 const loading = ref(false);
 const shares = ref<ShareLink[]>([]);
@@ -248,5 +274,61 @@ onMounted(loadShares);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.share-all-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.share-all-card {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--noto-border-soft, #eef2f7);
+  background: var(--noto-surface-solid, #fff);
+}
+
+.share-all-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-bottom: 8px;
+}
+
+.share-all-chip {
+  font-size: 11px;
+  color: var(--noto-text-muted);
+}
+
+.share-all-card-title {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.45;
+  word-break: break-word;
+  color: var(--noto-text);
+}
+
+.share-all-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--noto-text-muted);
+}
+
+.share-all-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--noto-border-soft, #eef2f7);
 }
 </style>

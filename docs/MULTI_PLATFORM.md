@@ -37,7 +37,7 @@
 | 平台 | 优先级 | 用户场景 | 与现状 |
 |------|--------|----------|--------|
 | **Web 桌面** | P0 | 深度写作、AI、看板、演示部署 | 已实现 |
-| **移动 Web / PWA** | **P1** | 随时看待办/笔记、收提醒、轻量录入 | 少量响应式 CSS，无移动 IA |
+| **移动 Web / PWA** | **P1** | 与桌面同功能集，移动布局适配 | `ResponsiveLayout` + 验收 [MOBILE_WEB_CHECKLIST.md](./MOBILE_WEB_CHECKLIST.md) |
 | **桌面壳** | P2 | 常驻、系统通知、Cmd+K 全局 | 未开始 |
 | **原生 App** | P3 | 推送、离线、相机剪藏 | 未开始 |
 | **小程序** | P4 | 微信生态引流、只读/轻操作 | 未开始 |
@@ -287,7 +287,7 @@ frontend/src/
 | 2 | 忘记密码 + 防枚举 | 前后端 + 测试 | ✅ |
 | 3 | 快捷键帮助 | `?` + 用户菜单 | ✅ |
 | 4 | OpenAPI | SpringDoc + `export-openapi.ps1` | ✅ |
-| 5 | 移动 Web 骨架 | `useBreakpoint` + `MobileLayout` | 待做（桌面 A 验收后） |
+| 5 | 移动 Web 骨架 | `useBreakpoint` + `MobileLayout` + `ResponsiveLayout` | ✅ Phase A 已启动 |
 
 ---
 
@@ -298,6 +298,7 @@ frontend/src/
 | [README.md](../README.md) | 功能、API、AI 路线图 |
 | [DEV_DEPLOY.md](./DEV_DEPLOY.md) | 开发 / Docker / 云服务器 |
 | [E2E_CHECKLIST.md](./E2E_CHECKLIST.md) | Web 桌面 15 分钟回归 |
+
 | [技术架构设计.txt](../技术架构设计.txt) | 多端预留、分层设计 |
 | [前端页面结构.md](../前端页面结构.md) | 页面与跳转关系 |
 | [API请求响应设计.md](../API请求响应设计.md) | 统一接口约定 |

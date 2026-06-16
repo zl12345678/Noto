@@ -28,7 +28,72 @@
     </a-card>
 
     <a-card class="reminders-table-card" :bordered="false">
+      <a-spin :spinning="loading">
+        <ul v-if="isMobile" class="reminder-all-cards">
+          <li v-for="record in reminders" :key="record.id" class="reminder-all-card">
+            <div class="reminder-all-card-head">
+              <a-tag :color="statusColor(record.status)">
+                {{ REMINDER_STATUS_LABEL[record.status] || '未知' }}
+              </a-tag>
+              <span v-if="record.workspaceName" class="reminder-all-ws">{{ record.workspaceName }}</span>
+            </div>
+            <p class="reminder-all-card-title">{{ record.todoTitle || '待办' }}</p>
+            <p class="reminder-all-card-meta">
+              <span>{{ formatTime(record.triggerAt) }}</span>
+            </p>
+            <p v-if="record.message" class="reminder-all-card-msg">{{ record.message }}</p>
+            <a-button
+              v-if="record.noteId"
+              type="link"
+              size="small"
+              class="reminder-all-note"
+              @click="openNote(record)"
+            >
+              {{ record.noteTitle || '关联笔记' }}
+            </a-button>
+            <div class="reminder-all-card-actions">
+              <a-button
+                v-if="record.status === REMINDER_STATUS.PENDING"
+                type="link"
+                size="small"
+                @click="openEditModal(record)"
+              >
+                编辑
+              </a-button>
+              <a-button
+                v-if="record.status === REMINDER_STATUS.PENDING"
+                type="link"
+                size="small"
+                @click="handleCancel(record.id)"
+              >
+                取消
+              </a-button>
+              <a-popconfirm title="确定删除该提醒？" ok-text="删除" cancel-text="取消" @confirm="removeReminder(record.id)">
+                <a-button type="link" size="small" danger>删除</a-button>
+              </a-popconfirm>
+            </div>
+          </li>
+          <EmptyState
+            v-if="!loading && !reminders.length"
+            title="暂无提醒"
+            description="新建提醒或在待办中设置"
+            preset="todo"
+            compact
+          />
+        </ul>
+        <div v-if="isMobile && total > 0" class="reminder-all-pagination">
+          <a-pagination
+            v-model:current="page"
+            v-model:page-size="pageSize"
+            :total="total"
+            :show-size-changer="false"
+            size="small"
+            @change="onMobilePageChange"
+          />
+        </div>
+      </a-spin>
       <a-table
+        v-if="!isMobile"
         :columns="columns"
         :data-source="reminders"
         :loading="loading"
@@ -144,9 +209,12 @@ import {
 import { syncDueReminders } from '../../composables/useReminderNotifier';
 import { listTodos, type TodoItem } from '../../api/todos';
 import { listWorkspaces, type Workspace } from '../../api/workspaces';
+import EmptyState from '../../components/common/EmptyState.vue';
+import { useBreakpoint } from '../../composables/useBreakpoint';
 
 const route = useRoute();
 const router = useRouter();
+const { isMobile } = useBreakpoint();
 
 const loading = ref(false);
 const saving = ref(false);
@@ -205,6 +273,11 @@ const pagination = computed(() => ({
     loadReminders();
   },
 }));
+
+const onMobilePageChange = (next: number) => {
+  page.value = next;
+  void loadReminders();
+};
 
 const formatTime = (value: string) => dayjs(value).format('YYYY-MM-DD HH:mm');
 
@@ -399,5 +472,78 @@ onMounted(async () => {
   padding: 0;
   height: auto;
   font-size: 12px;
+}
+
+.reminder-all-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.reminder-all-card {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--noto-border-soft, #eef2f7);
+  background: var(--noto-surface-solid, #fff);
+}
+
+.reminder-all-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.reminder-all-ws {
+  font-size: 12px;
+  color: var(--noto-text-muted);
+}
+
+.reminder-all-card-title {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.reminder-all-card-meta {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--noto-accent-deep, #0891b2);
+  font-weight: 500;
+}
+
+.reminder-all-card-msg {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--noto-text-muted);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.reminder-all-note {
+  padding: 0;
+  height: auto;
+  margin-bottom: 8px;
+}
+
+.reminder-all-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--noto-border-soft, #eef2f7);
+}
+
+.reminder-all-pagination {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0 8px;
 }
 </style>

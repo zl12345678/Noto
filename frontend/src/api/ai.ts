@@ -1,4 +1,5 @@
 import http from './http';
+import { getApiBaseUrl } from '../utils/apiBase';
 
 export interface AiStatus {
   enabled: boolean;
@@ -238,7 +239,7 @@ export async function transformSelectionStream(
   },
   handlers: AiStreamHandlers,
 ) {
-  const response = await fetch(`/api/v1/ai/notes/${noteId}/transform-selection/stream`, {
+  const response = await fetch(`${getApiBaseUrl()}/ai/notes/${noteId}/transform-selection/stream`, {
     method: 'POST',
     headers: {
       ...authHeaders(),
@@ -472,7 +473,7 @@ export async function askAiStream(payload: AiAskRequest, handlers: AiStreamHandl
   if (payload.sessionId) params.set('sessionId', payload.sessionId);
   if (payload.recentContext) params.set('recentContext', payload.recentContext);
 
-  const response = await fetch(`/api/v1/ai/ask/stream?${params.toString()}`, {
+  const response = await fetch(`${getApiBaseUrl()}/ai/ask/stream?${params.toString()}`, {
     method: 'GET',
     headers: authHeaders(),
   });

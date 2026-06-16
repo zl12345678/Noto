@@ -1,5 +1,19 @@
 <template>
   <div class="profile-page">
+    <a-card v-if="isMobile" class="profile-card mobile-shortcuts" :bordered="false">
+      <div class="card-head">
+        <h1>模块入口</h1>
+        <span>与桌面版相同能力，布局为移动端适配</span>
+      </div>
+      <a-space direction="vertical" style="width: 100%">
+        <a-button block size="large" @click="router.push('/ai')">AI 助手</a-button>
+        <a-button block size="large" @click="router.push('/drive')">网盘</a-button>
+        <a-button block size="large" @click="router.push('/shares')">我的分享</a-button>
+        <a-button block size="large" @click="router.push('/reminders')">提醒</a-button>
+        <a-button block size="large" @click="router.push('/search')">搜索</a-button>
+        <a-button block size="large" danger @click="handleLogout">退出登录</a-button>
+      </a-space>
+    </a-card>
     <a-row :gutter="20">
       <a-col :xs="24" :lg="8">
         <a-card class="profile-card" :bordered="false">
@@ -176,7 +190,9 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watchEffect } from 'vue';
+import { useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
+import { useBreakpoint } from '../../composables/useBreakpoint';
 import { changePassword, updateProfile } from '../../api/profile';
 import { updateAvatar } from '../../api/avatar';
 import { getAiUserSettings, updateAiUserSettings } from '../../api/settings';
@@ -192,7 +208,15 @@ import {
 import { confirmPasswordRule, extractApiErrorMessage, optionalPasswordFieldRules } from '../../utils/passwordRules';
 
 const authStore = useAuthStore();
+const router = useRouter();
+const { isMobile } = useBreakpoint();
 const loading = ref(false);
+
+async function handleLogout() {
+  await authStore.logout();
+  message.success('已退出登录');
+  router.push('/login');
+}
 const aiSettingsLoading = ref(false);
 const aiSettingsSaving = ref(false);
 

@@ -183,21 +183,31 @@
           :pagination="false"
           :row-selection="rowSelection"
           :custom-row="customTableRow"
+          :scroll="isMobile ? undefined : { x: 720 }"
           row-key="key"
           size="middle"
+          class="drive-file-table"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'name'">
-              <template v-if="record.kind === 'folder'">
-                <FolderOutlined class="list-item-icon list-item-icon--folder" />
-                <span class="folder-link">{{ record.name }}</span>
-              </template>
-              <template v-else>
-                <component :is="getFileIcon(record.file)" class="list-item-icon" />
-                <a :href="record.file.fileUrl" target="_blank" rel="noopener" class="file-link">
-                  {{ record.name }}
-                </a>
-              </template>
+              <div class="drive-name-cell">
+                <template v-if="record.kind === 'folder'">
+                  <FolderOutlined class="list-item-icon list-item-icon--folder" />
+                  <span class="folder-link drive-name-text" :title="record.name">{{ record.name }}</span>
+                </template>
+                <template v-else>
+                  <component :is="getFileIcon(record.file)" class="list-item-icon" />
+                  <a
+                    :href="record.file.fileUrl"
+                    target="_blank"
+                    rel="noopener"
+                    class="file-link drive-name-text"
+                    :title="record.name"
+                  >
+                    {{ record.name }}
+                  </a>
+                </template>
+              </div>
             </template>
             <template v-else-if="column.key === 'itemType'">
               {{ record.kind === 'folder' ? '文件夹' : '文件' }}
@@ -376,6 +386,8 @@ import {
   getDriveFolderDescendantIds,
   getDriveFolderParentId,
 } from '../../utils/driveFolderTree';
+import { normalizeDriveFile, resolveDriveFileDisplayName } from '../../utils/driveFileName';
+import { useBreakpoint } from '../../composables/useBreakpoint';
 
 type DriveLocationKey = 'root' | 'uncategorized' | 'unlinked' | `folder:${string}`;
 type FileViewMode = 'list' | 'grid';
@@ -415,6 +427,7 @@ type ExplorerItem =
 const route = useRoute();
 const router = useRouter();
 const workspaceStore = useWorkspaceStore();
+const { isMobile } = useBreakpoint();
 
 const workspaceId = ref<string>();
 const keyword = ref('');
@@ -607,7 +620,7 @@ const explorerItems = computed<ExplorerItem[]>(() => {
   const fileItems: ExplorerItem[] = filteredFiles.value.map((file) => ({
     kind: 'file' as const,
     key: `file:${file.id}`,
-    name: file.fileName,
+    name: resolveDriveFileDisplayName(file),
     file,
   }));
 
@@ -643,14 +656,23 @@ const customTableRow = (record: ExplorerItem) => ({
   style: record.kind === 'folder' ? { cursor: 'pointer' } : {},
 });
 
-const columns = [
-  { title: '名称', key: 'name', ellipsis: true },
-  { title: '类型', key: 'itemType', width: 90 },
-  { title: '大小', key: 'size', width: 90 },
-  { title: '关联文档', key: 'linkedNotes' },
-  { title: '上传时间', key: 'createdAt', width: 140 },
-  { title: '操作', key: 'actions', width: 72, align: 'center' as const },
-];
+const columns = computed(() => {
+  if (isMobile.value) {
+    return [
+      { title: '名称', key: 'name', ellipsis: true },
+      { title: '大小', key: 'size', width: 72 },
+      { title: '操作', key: 'actions', width: 48, align: 'center' as const },
+    ];
+  }
+  return [
+    { title: '名称', key: 'name', ellipsis: true, minWidth: 160 },
+    { title: '类型', key: 'itemType', width: 90 },
+    { title: '大小', key: 'size', width: 90 },
+    { title: '关联文档', key: 'linkedNotes' },
+    { title: '上传时间', key: 'createdAt', width: 140 },
+    { title: '操作', key: 'actions', width: 72, align: 'center' as const },
+  ];
+});
 
 const filterNoteOption = (input: string, option?: { label?: string; value?: string }) =>
   (option?.label ?? '').toLowerCase().includes(input.toLowerCase());
@@ -843,7 +865,8 @@ const loadFiles = async () => {
   }
   loading.value = true;
   try {
-    files.value = await listDriveFiles(query);
+    const list = await listDriveFiles(query);
+    files.value = list.map((item) => normalizeDriveFile(item));
   } catch (error: any) {
     message.error(error?.message || '加载网盘失败');
   } finally {
@@ -1458,6 +1481,26 @@ a.explorer-item-name:hover {
 
 .list-item-icon--folder {
   font-size: 14px;
+}
+
+.drive-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.drive-name-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drive-file-table :deep(.ant-table-cell) {
+  color: var(--noto-text);
 }
 
 .folder-link {

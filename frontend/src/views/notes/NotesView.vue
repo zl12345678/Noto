@@ -1,5 +1,13 @@
 <template>
-  <div class="notes-workspace">
+  <MobileNotesHub v-if="isMobile && showMobileNotesHub" />
+  <div
+    v-else
+    class="notes-workspace"
+    :class="{
+      'notes-workspace--mobile-list': isMobile && !activeNoteId,
+      'notes-workspace--mobile-read': isMobile && !!activeNoteId,
+    }"
+  >
     <aside
       v-show="!treeCollapsed"
       class="tree-pane"
@@ -689,6 +697,8 @@ import {
   type TreeNodeSnapshot,
 } from '../../utils/noteTreeDrag';
 import { isAutoHomepageNote } from '../../utils/onboarding';
+import { useBreakpoint } from '../../composables/useBreakpoint';
+import MobileNotesHub from '../../components/mobile/MobileNotesHub.vue';
 
 type TreeNodeType = 'root' | 'folder' | 'note';
 type CreateAnchor =
@@ -710,6 +720,7 @@ type ContextMenuItem = { key: string; label?: string; danger?: boolean; divider?
 
 const router = useRouter();
 const route = useRoute();
+const { isMobile } = useBreakpoint();
 const sidebarLayout = useSidebarLayoutStore();
 const drawerLayout = useDrawerLayoutStore();
 const todoSummary = useTodoSummaryStore();
@@ -872,6 +883,16 @@ const isWorkspaceHomepageNote = (item: Note) => {
 const folderOptions = computed(() => folders.value.map((item) => ({ label: item.name, value: item.id })));
 const tagOptions = computed(() => tags.value.map((item) => ({ label: item.name, value: item.id })));
 const activeNoteId = computed(() => (typeof route.params.id === 'string' ? route.params.id : ''));
+
+const showMobileNotesHub = computed(() => {
+  if (!isMobile.value) return false;
+  if (activeNoteId.value) return false;
+  if (typeof route.query.workspace === 'string' && route.query.workspace) return false;
+  if (typeof route.query.folder === 'string' && route.query.folder) return false;
+  if (route.query.dir) return false;
+  return true;
+});
+
 const treeCollapsed = computed(() => sidebarLayout.treeCollapsed);
 const useVirtualTree = computed(() => {
   if (!displayTreeData.value.length) return false;

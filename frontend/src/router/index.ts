@@ -1,7 +1,9 @@
-import { createRouter, createWebHistory } from 'vue-router';
+import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router';
 import { message } from 'ant-design-vue';
 import { useAuthStore } from '../store/auth';
-import AppLayout from '../layouts/AppLayout.vue';
+import ResponsiveLayout from '../layouts/ResponsiveLayout.vue';
+import { resolveMobileRedirect } from '../utils/mobileRouteGuard';
+import { isNativeApp } from '../utils/capacitor';
 
 const LoginView = () => import('../views/auth/LoginView.vue');
 const RegisterView = () => import('../views/auth/RegisterView.vue');
@@ -18,7 +20,7 @@ const MySharesView = () => import('../views/share/MySharesView.vue');
 const ShareView = () => import('../views/share/ShareView.vue');
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: isNativeApp() ? createWebHashHistory() : createWebHistory(),
   routes: [
     {
       path: '/login',
@@ -46,7 +48,7 @@ const router = createRouter({
     },
     {
       path: '/',
-      component: AppLayout,
+      component: ResponsiveLayout,
       children: [
         {
           path: '',
@@ -128,6 +130,11 @@ router.beforeEach(async (to) => {
   if (!authStore.isAuthenticated) {
     message.warning('请先登录');
     return '/login';
+  }
+
+  const mobileRedirect = resolveMobileRedirect(to);
+  if (mobileRedirect) {
+    return mobileRedirect;
   }
 
   return true;

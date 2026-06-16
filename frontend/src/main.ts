@@ -8,6 +8,7 @@ import 'ant-design-vue/dist/reset.css';
 import './styles/global.css';
 import './styles/pages.css';
 import './styles/auth.css';
+import './styles/mobile.css';
 import App from './App.vue';
 import router from './router';
 

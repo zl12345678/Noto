@@ -2,8 +2,10 @@ import axios from 'axios';
 import router from '../router';
 import { useAuthStore } from '../store/auth';
 
+import { getApiBaseUrl } from '../utils/apiBase';
+
 const http = axios.create({
-  baseURL: '/api/v1',
+  baseURL: getApiBaseUrl(),
   timeout: 15000,
 });
 

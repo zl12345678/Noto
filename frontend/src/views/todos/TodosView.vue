@@ -1,5 +1,5 @@
 <template>
-  <div class="todos-page noto-page">
+  <div class="todos-page noto-page" :class="{ 'todos-page--mobile': isMobile }">
     <a-card class="todos-hero" :bordered="false">
       <div class="hero-row">
         <div>
@@ -57,68 +57,70 @@
     />
 
     <template v-if="viewMode === 'board'">
-      <div :class="['board-shell', densityClass]">
-      <a-card
-        v-if="!boardLoading && isBoardEmpty"
-        class="board-empty-card noto-surface-card"
-        :bordered="false"
-      >
-        <EmptyState
-          title="还没有待办"
-          description="从文档提取待办，或在首页把文档拖到「待办队列」"
-          preset="todo"
-        >
-          <a-space>
-            <a-button type="primary" @click="router.push('/')">回首页写文档</a-button>
-            <a-button @click="openCreateModal(TODO_HORIZON.ACTION)">直接新建</a-button>
-          </a-space>
-        </EmptyState>
-      </a-card>
+      <a-spin :spinning="boardLoading">
+        <div :class="['board-shell', densityClass]">
+          <a-card
+            v-if="!boardLoading && isBoardEmpty"
+            class="board-empty-card noto-surface-card"
+            :bordered="false"
+          >
+            <EmptyState
+              title="还没有待办"
+              description="从文档提取待办，或在首页把文档拖到「待办队列」"
+              preset="todo"
+            >
+              <a-space>
+                <a-button type="primary" @click="router.push('/')">回首页写文档</a-button>
+                <a-button @click="openCreateModal(TODO_HORIZON.ACTION)">直接新建</a-button>
+              </a-space>
+            </EmptyState>
+          </a-card>
 
-      <a-card class="board-section parallel-section noto-surface-card--accent" :bordered="false" :loading="boardLoading">
-        <div class="section-head">
-          <h3>进行中</h3>
-        </div>
-        <ParallelTodoCards
-          :items="board?.parallelTodos || []"
-          empty-text="从待办队列加入进行中"
-          @complete="completeTodo"
-          @pause="pauseTodo"
-          @breakdown="runBreakdownForTodo"
-          @open-note="openNote"
-          @reminder="openReminderModal"
-          @postpone="postponeTodo"
-        />
-      </a-card>
+          <a-card class="board-section parallel-section noto-surface-card--accent" :bordered="false" :loading="boardLoading">
+            <div class="section-head">
+              <h3>进行中</h3>
+            </div>
+            <ParallelTodoCards
+              :items="board?.parallelTodos || []"
+              empty-text="从待办队列加入进行中"
+              @complete="completeTodo"
+              @pause="pauseTodo"
+              @breakdown="runBreakdownForTodo"
+              @open-note="openNote"
+              @reminder="openReminderModal"
+              @postpone="postponeTodo"
+            />
+          </a-card>
 
-      <a-card class="board-section" :bordered="false" :loading="boardLoading">
-        <div class="section-head">
-          <h3>待办队列</h3>
+          <a-card class="board-section" :bordered="false" :loading="boardLoading">
+            <div class="section-head">
+              <h3>待办队列</h3>
+            </div>
+            <TodoActionList
+              v-if="board?.actionTodos?.length"
+              :items="board.actionTodos"
+              @complete="completeTodo"
+              @parallel="joinParallel"
+              @breakdown="runBreakdownForTodo"
+              @open-note="openNote"
+              @reminder="openReminderModal"
+              @postpone="postponeTodo"
+            />
+            <EmptyState
+              v-else
+              title="待办队列为空"
+              description="从文档提取待办，或在此直接新建"
+              preset="todo"
+              compact
+            >
+              <a-space>
+                <a-button type="primary" @click="router.push('/notes?action=new-doc')">先去写文档</a-button>
+                <a-button @click="openCreateModal(TODO_HORIZON.ACTION)">直接新建</a-button>
+              </a-space>
+            </EmptyState>
+          </a-card>
         </div>
-        <TodoActionList
-          v-if="board?.actionTodos?.length"
-          :items="board.actionTodos"
-          @complete="completeTodo"
-          @parallel="joinParallel"
-          @breakdown="runBreakdownForTodo"
-          @open-note="openNote"
-          @reminder="openReminderModal"
-          @postpone="postponeTodo"
-        />
-        <EmptyState
-          v-else
-          title="待办队列为空"
-          description="从文档提取待办，或在此直接新建"
-          preset="todo"
-          compact
-        >
-          <a-space>
-            <a-button type="primary" @click="router.push('/notes?action=new-doc')">先去写文档</a-button>
-            <a-button @click="openCreateModal(TODO_HORIZON.ACTION)">直接新建</a-button>
-          </a-space>
-        </EmptyState>
-      </a-card>
-      </div>
+      </a-spin>
     </template>
 
     <a-card v-else class="todos-table-card" :bordered="false">
@@ -148,42 +150,95 @@
           @change="reloadTable"
         />
       </a-space>
-      <a-table
-        :columns="columns"
-        :data-source="displayedTodos"
-        :loading="loading"
-        :pagination="pagination"
-        row-key="id"
-        :scroll="{ x: 1000 }"
-        class="all-table"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'title'">
-            <a-tag :color="isLongTermTodo(record) ? 'purple' : 'blue'" style="margin-bottom: 4px">
-              {{ TODO_HORIZON_LABEL[record.horizon] }}
-            </a-tag>
-            <strong>{{ record.title }}</strong>
+      <a-spin :spinning="loading">
+        <ul v-if="isMobile" class="todo-all-cards">
+          <li v-for="item in displayedTodos" :key="item.id" class="todo-all-card">
+            <div class="todo-all-card-head">
+              <a-tag :color="isLongTermTodo(item) ? 'purple' : 'blue'" class="todo-all-card-type">
+                {{ TODO_HORIZON_LABEL[item.horizon] }}
+              </a-tag>
+              <a-tag :color="statusColor(item.status)">{{ TODO_STATUS_LABEL[item.status] }}</a-tag>
+            </div>
+            <p class="todo-all-card-title">{{ item.title }}</p>
+            <p class="todo-all-card-meta">
+              <span v-if="item.workspaceName">{{ item.workspaceName }}</span>
+              <span v-if="item.dueAt" :class="{ overdue: isTodoOverdue(item) }">
+                {{ formatTodoDue(item) }}
+              </span>
+              <span v-else class="muted">无截止</span>
+            </p>
+            <div class="todo-all-card-actions">
+              <TodoQuickActions
+                :item="item"
+                size="mini"
+                :show-parallel="item.status === TODO_STATUS.PENDING"
+                :show-pause="item.status === TODO_STATUS.IN_PROGRESS"
+                @complete="completeTodo"
+                @parallel="joinParallel"
+                @pause="pauseTodo"
+                @open-note="openNote"
+                @reminder="openReminderModal"
+                @postpone="postponeTodo"
+              />
+              <a-button type="link" size="small" class="edit-link" @click="openEditModal(item)">编辑</a-button>
+            </div>
+          </li>
+          <EmptyState
+            v-if="!loading && !displayedTodos.length"
+            title="没有匹配的待办"
+            description="调整筛选条件或新建一条"
+            preset="todo"
+            compact
+          />
+        </ul>
+        <a-table
+          v-else
+          :columns="columns"
+          :data-source="displayedTodos"
+          :loading="loading"
+          :pagination="pagination"
+          row-key="id"
+          :scroll="{ x: 1000 }"
+          class="all-table"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'title'">
+              <a-tag :color="isLongTermTodo(record) ? 'purple' : 'blue'" style="margin-bottom: 4px">
+                {{ TODO_HORIZON_LABEL[record.horizon] }}
+              </a-tag>
+              <strong>{{ record.title }}</strong>
+            </template>
+            <template v-else-if="column.key === 'status'">
+              <a-tag :color="statusColor(record.status)">{{ TODO_STATUS_LABEL[record.status] }}</a-tag>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <TodoQuickActions
+                :item="record"
+                size="mini"
+                :show-parallel="record.status === TODO_STATUS.PENDING"
+                :show-pause="record.status === TODO_STATUS.IN_PROGRESS"
+                @complete="completeTodo"
+                @parallel="joinParallel"
+                @pause="pauseTodo"
+                @open-note="openNote"
+                @reminder="openReminderModal"
+                @postpone="postponeTodo"
+              />
+              <a-button type="link" size="small" class="edit-link" @click="openEditModal(record)">编辑</a-button>
+            </template>
           </template>
-          <template v-else-if="column.key === 'status'">
-            <a-tag :color="statusColor(record.status)">{{ TODO_STATUS_LABEL[record.status] }}</a-tag>
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <TodoQuickActions
-              :item="record"
-              size="mini"
-              :show-parallel="record.status === TODO_STATUS.PENDING"
-              :show-pause="record.status === TODO_STATUS.IN_PROGRESS"
-              @complete="completeTodo"
-              @parallel="joinParallel"
-              @pause="pauseTodo"
-              @open-note="openNote"
-              @reminder="openReminderModal"
-              @postpone="postponeTodo"
-            />
-            <a-button type="link" size="small" class="edit-link" @click="openEditModal(record)">编辑</a-button>
-          </template>
-        </template>
-      </a-table>
+        </a-table>
+        <div v-if="isMobile && quickFilter === 'all' && total > 0" class="todo-all-pagination">
+          <a-pagination
+            v-model:current="page"
+            v-model:page-size="pageSize"
+            :total="total"
+            :show-size-changer="false"
+            size="small"
+            @change="onMobilePageChange"
+          />
+        </div>
+      </a-spin>
     </a-card>
 
     <a-modal v-model:open="modalOpen" :title="modalTitle" :confirm-loading="saving" @ok="handleModalOk">
@@ -283,9 +338,11 @@ import NoteSelect from '../../components/note/NoteSelect.vue';
 import { isVagueTodoTitle, buildPostponedDueAt } from '../../utils/todoAssist';
 import { useTodoSummaryStore } from '../../store/todoSummary';
 import { useBoardDensity } from '../../composables/useBoardDensity';
+import { useBreakpoint } from '../../composables/useBreakpoint';
 
 const route = useRoute();
 const router = useRouter();
+const { isMobile } = useBreakpoint();
 const todoSummary = useTodoSummaryStore();
 const { density: boardDensity, densityClass } = useBoardDensity();
 
@@ -428,6 +485,17 @@ const statusColor = (status: number) => {
   if (status === 2) return 'success';
   if (status === 1) return 'processing';
   return 'blue';
+};
+
+const formatTodoDue = (item: TodoItem) => {
+  if (!item.dueAt) return '';
+  const label = dayjs(item.dueAt).format('MM-DD HH:mm');
+  return isTodoOverdue(item) ? `逾期 ${label}` : `截止 ${label}`;
+};
+
+const onMobilePageChange = (next: number) => {
+  page.value = next;
+  void loadTodos();
 };
 
 const reloadBoard = async () => {
@@ -895,6 +963,77 @@ onMounted(async () => {
 
 .all-table {
   margin-top: 8px;
+}
+
+.todo-all-cards {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.todo-all-card {
+  padding: 12px 14px;
+  border-radius: var(--noto-radius-md, 12px);
+  border: 1px solid var(--noto-border-soft, #eef2f7);
+  background: var(--noto-surface-solid, #fff);
+}
+
+.todo-all-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.todo-all-card-type {
+  margin: 0;
+}
+
+.todo-all-card-title {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--noto-text);
+  word-break: break-word;
+}
+
+.todo-all-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--noto-text-muted);
+}
+
+.todo-all-card-meta .overdue {
+  color: #cf1322;
+  font-weight: 500;
+}
+
+.todo-all-card-meta .muted {
+  color: #94a3b8;
+}
+
+.todo-all-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--noto-border-soft, #eef2f7);
+}
+
+.todo-all-pagination {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0 8px;
 }
 
 .edit-link {
