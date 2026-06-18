@@ -3,16 +3,10 @@ import vue from '@vitejs/plugin-vue';
 import { VitePWA } from 'vite-plugin-pwa';
 import { fileURLToPath, URL } from 'node:url';
 
-export default defineConfig(({ mode }) => {
-  const isCapacitor = mode === 'capacitor';
-
-  return {
-  base: isCapacitor ? './' : '/',
+export default defineConfig(() => ({
+  base: '/',
   plugins: [
     vue(),
-    ...(isCapacitor
-      ? []
-      : [
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
@@ -53,7 +47,6 @@ export default defineConfig(({ mode }) => {
       },
       devOptions: { enabled: false },
     }),
-      ]),
   ],
   resolve: {
     alias: {
@@ -101,5 +94,4 @@ export default defineConfig(({ mode }) => {
       },
     },
   },
-  };
-});
+}));

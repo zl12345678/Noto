@@ -13,7 +13,7 @@
 | Docker 演示 | `demo-up.ps1` → `demo-down.ps1` |
 | 生产（Windows 预演） | `prod-check.ps1 -Strict` → `prod-up.ps1` |
 | 生产（Linux 云服务器） | `deploy/prod-up.sh` |
-| Android APK | `build-apk.ps1`（首次加 `-SetupSdk`） |
+| 移动 App | `cd mobile && npm run dev:h5` · 打包 `build-apk.ps1` |
 | 查状态 | `stack-status.ps1` |
 
 ---
@@ -31,14 +31,14 @@
 | `prod-down.ps1` | 停止生产栈 |
 | `prod-update.ps1` | git pull + 重建 |
 | `prod-backup.ps1` | PostgreSQL 备份 |
-| `build-apk.ps1` | Android 一键打包；`-SetupSdk` / `-Install` / `-Release` |
+| `build-apk.ps1` | uni-app 构建 App-Android 资源；`-H5Only` 仅 H5 |
 | `reset-demo-seed.ps1` | 重置演示种子 |
 | `export-openapi.ps1` | 导出 `docs/openapi.yaml` |
 | `stack-status.ps1` | 容器与端口状态 |
 | `start-postgres.ps1` | 仅 db（一般用 `dev-up` 即可） |
 | `start-minio.ps1` | 仅 minio（国内镜像；可能与 compose 冲突） |
 
-共享库：`lib/Noto-Docker.ps1`、`lib/Noto-Android.ps1`
+共享库：`lib/Noto-Docker.ps1`
 
 Linux 等价脚本见 `deploy/*.sh` → [deploy/README.md](../deploy/README.md)
 

@@ -23,6 +23,26 @@
 
 **适用**：自己写代码，要热重载、断点调试。
 
+### 开发环境要启动什么？
+
+| 顺序 | 组件 | 运行方式 | 命令 | 端口 | 是否必须 |
+|------|------|----------|------|------|----------|
+| 0 | **Docker Desktop** | 系统 | 手动打开 Docker Desktop | — | ✅ 必须 |
+| 1 | **PostgreSQL**（pgvector） | Docker | `.\scripts\dev-up.ps1` | 5432 | ✅ 必须 |
+| 2 | **MinIO**（图片/附件） | Docker | 同上（与 db 一起启动） | 9000 / 9001 | ✅ 必须 |
+| 3 | **Spring Boot 后端** | 本机 JDK 17 | `cd backend; .\dev.ps1 -WatchCompile` | 9086 | ✅ 必须 |
+| 4 | **Vue 前端** | 本机 Node | `cd frontend; npm run dev` | 5173 | ✅ 必须 |
+| — | **通义 AI** | 本机后端 | 见下方「可选」 | — | ❌ 可选 |
+
+> **3 个终端**：① `dev-up`（一次即可） ② 后端 ③ 前端。数据库/MinIO 用 Docker；前后端用 IDE/终端本地跑。
+
+**首次准备**（只做一次）：
+
+```powershell
+copy .env.example .env          # 仓库根目录
+cd frontend && npm install      # 安装前端依赖
+```
+
 ### 启动
 
 ```powershell
@@ -37,6 +57,49 @@ npm run dev                   # 3. 前端 → :5173
 ```
 
 也可用 Cursor / VS Code 运行配置 **Backend (DevTools 热部署)** 代替 `dev.ps1`。
+
+### IntelliJ IDEA 运行后端
+
+**① 打开项目（只做一次）**
+
+- **File → Open** → 选 **`E:\Noto\backend\pom.xml`**
+- 选 **Open as Project**（Maven 项目）
+- 等右下角 Maven 导入完成；**Project SDK 设为 JDK 17**
+
+不要只打开 `E:\Noto` 根目录当普通文件夹，否则读不到 `application.yml`，会报 `DataSource url is not specified`。
+
+**② 先起 Docker**
+
+```powershell
+cd E:\Noto
+.\scripts\dev-up.ps1
+```
+
+**③ 运行后端**
+
+右上角运行配置选 **`ZhihuiApplication (dev)`**（仓库已带 `.run/` 配置），点 Run。
+
+若列表里没有，**Run → Edit Configurations → + → Spring Boot**：
+
+| 项 | 值 |
+|----|-----|
+| Name | `ZhihuiApplication (dev)` |
+| Main class | `com.noto.zhihui.ZhihuiApplication` |
+| Active profiles | `dev` |
+| Working directory | `E:\Noto\backend` |
+| Environment | `NOTO_DEMO_ENABLED=true`（可选） |
+
+**④ 前端**（终端，与 IDEA 无关）
+
+```powershell
+cd E:\Noto\frontend
+npm run dev
+```
+
+**启用 AI**：Edit Configurations → Environment variables 增加  
+`NOTO_AI_ENABLED=true` 和 `AI_DASHSCOPE_API_KEY=你的Key`，然后重启 Run。
+
+**DevTools 热重载**：改 Java 后 **Build → Build Project**（Ctrl+F9），约 1–3 秒自动重启。
 
 ### 停止
 
@@ -132,30 +195,29 @@ copy deploy\env.prod.example .env   # 编辑生产密钥
 
 ---
 
-## ④ Android APK
+## ④ 移动 App（UniApp）
 
-**适用**：打包 Capacitor 手机壳。后端仍用 JDK 17；**Android 构建需要 Java 21**（Android Studio 自带 JBR）。
+**适用**：`mobile/` uni-app 客户端。H5 开发无需 Android SDK；打原生包见 [UNIAPP.md](./UNIAPP.md)。
+
+### 日常开发
+
+```powershell
+cd backend; .\dev.ps1 -WatchCompile   # 后端 :9086
+cd ..\mobile; npm install; npm run dev:h5   # 移动 H5 :5174
+```
 
 ### 发版前
 
-编辑 `frontend/.env.capacitor` 里的 API 地址（真机用电脑局域网 IP，模拟器用 `10.0.2.2`）。
+编辑 `mobile/.env.production` 里的 `VITE_API_BASE_URL`（真机用电脑局域网 IP，模拟器用 `10.0.2.2`）。
 
-### 打包
+### 构建 App 资源
 
 ```powershell
-# 首次（无 Android SDK）
-.\scripts\build-apk.ps1 -SetupSdk
-
-# 日常（Web 构建 + 同步 + Debug APK）
-.\scripts\build-apk.ps1
-
-# 装到已连接手机
-.\scripts\build-apk.ps1 -Install
+.\scripts\build-apk.ps1          # App-Android 资源
+.\scripts\build-apk.ps1 -H5Only  # 仅 H5 静态站
 ```
 
-产物：`frontend\android\app\build\outputs\apk\debug\app-debug.apk`
-
-更多（Release 签名、HTTP 明文等）→ [BUILD_APK.md](./BUILD_APK.md)
+安装包需 HBuilderX 云打包 → 详见 [UNIAPP.md](./UNIAPP.md)
 
 ---
 

@@ -1,4 +1,19 @@
-# 国内环境 Android 打包（镜像 404 / 无法访问 Google）
+# 国内环境 Android 打包（已迁移）
+
+> **Capacitor 方案已废弃**，移动端改用 uni-app。见 **[UNIAPP.md](./UNIAPP.md)**。
+
+若仅需手机访问，推荐：
+
+```powershell
+cd mobile
+npm run dev:h5
+```
+
+浏览器打开后「添加到主屏幕」，不依赖 Gradle / Google SDK。
+
+---
+
+# 以下为旧版 Capacitor 文档（归档）
 
 > 2024 起不少 **阿里云/腾讯等「Google 仓库镜像」已下架或 404**，Capacitor/Android 构建 **无法只靠国内镜像** 完成。  
 > 可行方案如下（按推荐顺序）。

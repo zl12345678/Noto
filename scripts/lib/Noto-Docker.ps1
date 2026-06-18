@@ -102,6 +102,26 @@ function Wait-NotoContainerHealthy {
     return $false
 }
 
+function Invoke-DockerExecQuiet {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ContainerName,
+        [Parameter(Mandatory = $true)]
+        [string[]]$ExecArgs
+    )
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $output = & docker exec $ContainerName @ExecArgs 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            throw "docker exec failed in ${ContainerName}: $output"
+        }
+        return $output
+    } finally {
+        $ErrorActionPreference = $prev
+    }
+}
+
 function Initialize-NotoPgvector {
     param(
         [string]$ContainerName = 'noto-db',
@@ -121,8 +141,13 @@ function Initialize-NotoPgvector {
         return
     }
 
-    docker exec $ContainerName psql -U $PostgresUser -d $DatabaseName -c 'CREATE EXTENSION IF NOT EXISTS vector;' 2>$null | Out-Null
-    $ext = docker exec $ContainerName psql -U $PostgresUser -d $DatabaseName -tAc "SELECT extversion FROM pg_extension WHERE extname='vector';" 2>$null
+    # psql 的 NOTICE 会写到 stderr，在 ErrorAction Stop 下会被误判为失败
+    Invoke-DockerExecQuiet -ContainerName $ContainerName -ExecArgs @(
+        'psql', '-U', $PostgresUser, '-d', $DatabaseName, '-c', 'CREATE EXTENSION IF NOT EXISTS vector;'
+    ) | Out-Null
+    $ext = (Invoke-DockerExecQuiet -ContainerName $ContainerName -ExecArgs @(
+        'psql', '-U', $PostgresUser, '-d', $DatabaseName, '-tAc', "SELECT extversion FROM pg_extension WHERE extname='vector';"
+    ) | Out-String).Trim()
     if ($ext) {
         Write-Host "pgvector extension: $ext" -ForegroundColor Green
     }

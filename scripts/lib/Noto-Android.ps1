@@ -1,4 +1,5 @@
-﻿# Shared helpers for Noto Android / Capacitor APK builds.
+﻿# 已废弃 — Capacitor 壳已移除，请使用 uni-app（见 docs/UNIAPP.md）
+# Shared helpers for legacy Noto Android / Capacitor APK builds.
 # Dot-source: . (Join-Path $PSScriptRoot 'lib\Noto-Android.ps1')
 
 $script:NotoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent

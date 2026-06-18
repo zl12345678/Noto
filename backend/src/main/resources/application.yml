@@ -6,11 +6,6 @@ spring:
     name: noto-zhihui-backend
   profiles:
     active: dev
-  datasource:
-    url: jdbc:postgresql://localhost:5432/noto_zhihui_dev
-    username: postgres
-    password: 123456
-    driver-class-name: org.postgresql.Driver
   servlet:
     multipart:
       max-file-size: 100MB

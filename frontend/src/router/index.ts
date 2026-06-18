@@ -1,9 +1,8 @@
-import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router';
+import { createRouter, createWebHistory } from 'vue-router';
 import { message } from 'ant-design-vue';
 import { useAuthStore } from '../store/auth';
 import ResponsiveLayout from '../layouts/ResponsiveLayout.vue';
 import { resolveMobileRedirect } from '../utils/mobileRouteGuard';
-import { isNativeApp } from '../utils/capacitor';
 
 const LoginView = () => import('../views/auth/LoginView.vue');
 const RegisterView = () => import('../views/auth/RegisterView.vue');
@@ -20,7 +19,7 @@ const MySharesView = () => import('../views/share/MySharesView.vue');
 const ShareView = () => import('../views/share/ShareView.vue');
 
 const router = createRouter({
-  history: isNativeApp() ? createWebHashHistory() : createWebHistory(),
+  history: createWebHistory(),
   routes: [
     {
       path: '/login',

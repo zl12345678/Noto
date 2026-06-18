@@ -75,7 +75,8 @@ Noto · 知微帮助用户记录、整理、检索知识，并结合 **LangChain
 ```text
 Noto_知微/
 ├── backend/          # Spring Boot 后端
-├── frontend/         # Vue 3 前端
+├── frontend/         # Vue 3 Web 桌面 + 移动 Web
+├── mobile/           # uni-app 移动客户端
 ├── README.md         # 项目说明 + 进度 + AI 路线图（本文档）
 └── 各类设计文档（PRD、API、数据库等）
 ```
@@ -103,12 +104,12 @@ cd ..\frontend; npm run dev       # 前端 → :5173
 |------|------|
 | Docker 演示 | `.\scripts\demo-up.ps1` → http://localhost:8080 |
 | 生产上线 | Linux：`./deploy/prod-up.sh`（见 [deploy/README.md](deploy/README.md)） |
-| Android APK | `.\scripts\build-apk.ps1` |
+| Android App | `cd mobile && npm run dev:h5` · 打包见 [docs/UNIAPP.md](docs/UNIAPP.md) |
 
 ### 环境要求
 
 - **后端**：JDK 17、Maven、Node.js 18+
-- **Android 打包**：另需 JDK 21（Android Studio JBR）与 Android SDK → 见 [docs/BUILD_APK.md](docs/BUILD_APK.md)
+- **移动 App**：Node.js 18+、uni-app（`mobile/`）→ 见 [docs/UNIAPP.md](docs/UNIAPP.md)
 
 ### 启用 AI（可选）
 
