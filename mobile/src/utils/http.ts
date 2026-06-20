@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from './config';
+import { redirectToLogin } from './navigation';
 
 const TOKEN_KEY = 'noto-zhihui-token';
 
@@ -13,6 +14,10 @@ export class ApiError extends Error {
 
 function getToken(): string {
   return uni.getStorageSync(TOKEN_KEY) || '';
+}
+
+export function getAuthToken(): string {
+  return getToken();
 }
 
 export function setToken(token: string) {
@@ -46,14 +51,14 @@ export function request<T>(options: {
 }): Promise<T> {
   const method = options.method || 'GET';
   const auth = options.auth !== false;
-  const query = method === 'GET' ? buildQuery(options.params) : '';
+  const query = buildQuery(options.params);
   const url = `${getApiBaseUrl()}${options.url}${query}`;
 
   return new Promise((resolve, reject) => {
     uni.request({
       url,
-      method,
-      data: method === 'GET' ? undefined : options.data,
+      method: method as any,
+      data: method === 'GET' ? undefined : options.data as any,
       header: {
         'Content-Type': 'application/json',
         ...(auth && getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
@@ -62,9 +67,9 @@ export function request<T>(options: {
         const status = res.statusCode || 0;
         const body = res.data as any;
 
-        if (status === 401) {
+        if (status === 401 && auth) {
           clearToken();
-          uni.reLaunch({ url: '/pages/login/login' });
+          redirectToLogin();
           reject(new ApiError('登录已过期，请重新登录', 401));
           return;
         }

@@ -8,6 +8,12 @@ export interface AiUserSettings {
   dailyDigestHour: number;
   agentTrustMode: boolean;
   primaryWorkspaceId?: string | null;
+  primaryWorkspaceName?: string | null;
+  focusProjects?: string[];
+  agentPreferences?: string | null;
+  weeklyRetroEnabled: boolean;
+  weeklyRetroHour: number;
+  autoExtractTodosOnSave: boolean;
 }
 
 export function getAiUserSettings() {

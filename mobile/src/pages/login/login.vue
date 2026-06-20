@@ -16,6 +16,7 @@
       </view>
       <button class="btn-primary submit" :loading="loading" @click="onSubmit">登录</button>
       <text class="link" @click="goRegister">没有账号？注册</text>
+      <text class="sub-link" @click="showPasswordHelp">忘记密码？</text>
     </view>
   </view>
 </template>
@@ -46,6 +47,20 @@ async function onSubmit() {
 
 function goRegister() {
   uni.navigateTo({ url: '/pages/register/register' });
+}
+
+function showPasswordHelp() {
+  uni.showModal({
+    title: '密码帮助',
+    content: '演示账号：admin，密码：admin123。出于安全考虑，系统不提供未登录邮箱重置；登录后可在「我的 - 账号与 AI 设置」中修改密码。',
+    confirmText: '填入演示账号',
+    cancelText: '知道了',
+    success: (res) => {
+      if (!res.confirm) return;
+      username.value = 'admin';
+      password.value = 'admin123';
+    },
+  });
 }
 </script>
 
@@ -108,5 +123,13 @@ function goRegister() {
   margin-top: 24rpx;
   color: #0891b2;
   font-size: 28rpx;
+}
+
+.sub-link {
+  display: block;
+  text-align: center;
+  margin-top: 18rpx;
+  color: #78716c;
+  font-size: 25rpx;
 }
 </style>

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { onLaunch } from '@dcloudio/uni-app';
 import { isAuthenticated } from './stores/auth';
+import { redirectToLogin } from './utils/navigation';
 
 onLaunch(() => {
   if (!isAuthenticated()) {
-    uni.reLaunch({ url: '/pages/login/login' });
+    redirectToLogin();
   }
 });
 </script>

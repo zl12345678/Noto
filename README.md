@@ -85,6 +85,7 @@ Noto_知微/
 
 ## 快速启动
 
+> 新人先看 → [docs/NEWCOMER_GUIDE.md](docs/NEWCOMER_GUIDE.md)：开发、调试、演示、部署从 0 到 1 路线。
 > **命令速查（开发 / 演示 / 生产 / APK）→ [docs/COMMANDS.md](docs/COMMANDS.md)**  
 > 部署细节 → [docs/DEV_DEPLOY.md](docs/DEV_DEPLOY.md)
 

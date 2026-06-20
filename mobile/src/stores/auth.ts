@@ -1,6 +1,7 @@
 import { reactive } from 'vue';
 import { getCurrentUser, login as loginApi, logout as logoutApi, register as registerApi } from '../api/auth';
 import { clearToken, setToken } from '../utils/http';
+import { redirectToLogin } from '../utils/navigation';
 import type { CurrentUser, LoginRequest } from '../types/auth';
 
 const USER_KEY = 'noto-current-user';
@@ -71,7 +72,7 @@ export async function logout() {
 
 export function ensureAuthPage() {
   if (!isAuthenticated()) {
-    uni.reLaunch({ url: '/pages/login/login' });
+    redirectToLogin();
     return false;
   }
   return true;

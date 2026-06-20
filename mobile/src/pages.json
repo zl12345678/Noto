@@ -54,6 +54,12 @@
       }
     },
     {
+      "path": "pages/notes/import",
+      "style": {
+        "navigationBarTitleText": "导入笔记"
+      }
+    },
+    {
       "path": "pages/search/search",
       "style": {
         "navigationBarTitleText": "搜索"
@@ -79,6 +85,12 @@
       }
     },
     {
+      "path": "pages/share/share",
+      "style": {
+        "navigationBarTitleText": "分享"
+      }
+    },
+    {
       "path": "pages/settings/settings",
       "style": {
         "navigationBarTitleText": "设置"
@@ -100,32 +112,32 @@
       {
         "pagePath": "pages/home/home",
         "text": "行动",
-        "iconPath": "static/tab-home.png",
-        "selectedIconPath": "static/tab-home-active.png"
+        "iconPath": "/static/tab-home.png",
+        "selectedIconPath": "/static/tab-home-active.png"
       },
       {
         "pagePath": "pages/notes/notes",
         "text": "笔记",
-        "iconPath": "static/tab-notes.png",
-        "selectedIconPath": "static/tab-notes-active.png"
+        "iconPath": "/static/tab-notes.png",
+        "selectedIconPath": "/static/tab-notes-active.png"
       },
       {
         "pagePath": "pages/ai/ai",
         "text": "AI",
-        "iconPath": "static/tab-ai.png",
-        "selectedIconPath": "static/tab-ai-active.png"
+        "iconPath": "/static/tab-ai.png",
+        "selectedIconPath": "/static/tab-ai-active.png"
       },
       {
         "pagePath": "pages/todos/todos",
         "text": "待办",
-        "iconPath": "static/tab-todos.png",
-        "selectedIconPath": "static/tab-todos-active.png"
+        "iconPath": "/static/tab-todos.png",
+        "selectedIconPath": "/static/tab-todos-active.png"
       },
       {
         "pagePath": "pages/profile/profile",
         "text": "我的",
-        "iconPath": "static/tab-profile.png",
-        "selectedIconPath": "static/tab-profile-active.png"
+        "iconPath": "/static/tab-profile.png",
+        "selectedIconPath": "/static/tab-profile-active.png"
       }
     ]
   }

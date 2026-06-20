@@ -15,7 +15,7 @@
       </view>
       <view class="field">
         <text class="label">密码</text>
-        <input v-model="form.password" class="input" password placeholder="至少 6 位" />
+        <input v-model="form.password" class="input" password placeholder="8-64 位" />
       </view>
       <button class="btn-primary submit" :loading="loading" @click="onSubmit">注册</button>
       <text class="link" @click="goLogin">已有账号？去登录</text>
@@ -38,6 +38,10 @@ const form = reactive({
 async function onSubmit() {
   if (!form.username || !form.email || !form.nickname || !form.password) {
     uni.showToast({ title: '请填写完整信息', icon: 'none' });
+    return;
+  }
+  if (form.password.length < 8 || form.password.length > 64) {
+    uni.showToast({ title: '密码长度需在 8 到 64 位之间', icon: 'none' });
     return;
   }
   loading.value = true;
