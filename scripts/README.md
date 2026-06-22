@@ -1,6 +1,6 @@
 # Noto · 知微 — 脚本索引
 
-> **日常只需看 [docs/COMMANDS.md](../docs/COMMANDS.md)** — 按场景（开发 / 演示 / 生产 / APK）列出该执行的命令。  
+> **日常只需看 [docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md)** — 按场景（开发 / 演示 / 生产 / APK）列出该执行的命令。  
 > 本文档是完整脚本清单，备查用。
 
 ---
@@ -53,4 +53,4 @@ Linux 等价脚本见 `deploy/*.sh` → [deploy/README.md](../deploy/README.md)
 | 后端 API | http://localhost:9086 | — |
 | MinIO 控制台 | http://localhost:9001 | minioadmin / minioadmin |
 
-详细说明 → [docs/COMMANDS.md](../docs/COMMANDS.md)
+详细说明 → [docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md)

@@ -28,7 +28,7 @@ Noto · 知微帮助用户记录、整理、检索知识，并结合 **LangChain
 | AI | ✅ | 摘要、统一 AI 助手（问答+办事）、RAG、智能体、每日 digest | **阶段五～七**：Cmd+K、主流程嵌入、跨文档合成等 |
 | 首页 | ✅ | 四步工作流看板、**拖拽改状态**、AI 拖文档提取待办 | — |
 
-> 说明：`任务清单.csv`、`总索引文档.md` 部分条目已滞后，**以本 README 与代码为准**。
+> 说明：历史阶段文档已合并清理，当前文档入口以 [docs/DOCS_GUIDE.md](docs/DOCS_GUIDE.md) 为准。
 
 ### 简历向 AI 展示
 
@@ -42,8 +42,7 @@ Noto · 知微帮助用户记录、整理、检索知识，并结合 **LangChain
 | 工程化能力 | SSE 流式回答、AI 调用审计、Docker 部署、Testcontainers 集成测试 |
 
 - Web 展示页：`/ai-showcase`
-- 演示脚本：[docs/AI_RESUME_DEMO.md](docs/AI_RESUME_DEMO.md)
-- RAG 评测协议：[docs/AI_EVAL.md](docs/AI_EVAL.md)
+- AI 展示与评测：[docs/AI_SHOWCASE.md](docs/AI_SHOWCASE.md)
 
 ---
 
@@ -100,9 +99,8 @@ Noto_知微/
 
 ## 快速启动
 
-> 新人先看 → [docs/NEWCOMER_GUIDE.md](docs/NEWCOMER_GUIDE.md)：开发、调试、演示、部署从 0 到 1 路线。
-> **命令速查（开发 / 演示 / 生产 / APK）→ [docs/COMMANDS.md](docs/COMMANDS.md)**  
-> 部署细节 → [docs/DEV_DEPLOY.md](docs/DEV_DEPLOY.md)
+> 文档入口 → [docs/DOCS_GUIDE.md](docs/DOCS_GUIDE.md)：按面试官、开发者、部署运维、移动端、AI 接手视角安排阅读顺序。  
+> 开发与命令 → [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)；部署上线 → [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
 ### 日常开发（三步）
 
@@ -120,12 +118,12 @@ cd ..\frontend; npm run dev       # 前端 → :5173
 |------|------|
 | Docker 演示 | `.\scripts\demo-up.ps1` → http://localhost:8080 |
 | 生产上线 | Linux：`./deploy/prod-up.sh`（见 [deploy/README.md](deploy/README.md)） |
-| Android App | `cd mobile && npm run dev:h5` · 打包见 [docs/UNIAPP.md](docs/UNIAPP.md) |
+| Android App | `cd mobile && npm run dev:h5` · 打包见 [docs/MOBILE.md](docs/MOBILE.md) |
 
 ### 环境要求
 
 - **后端**：JDK 17、Maven、Node.js 18+
-- **移动 App**：Node.js 18+、uni-app（`mobile/`）→ 见 [docs/UNIAPP.md](docs/UNIAPP.md)
+- **移动 App**：Node.js 18+、uni-app（`mobile/`）→ 见 [docs/MOBILE.md](docs/MOBILE.md)
 
 ### 启用 AI（可选）
 
@@ -161,7 +159,7 @@ noto:
 
 ## Docker 演示 / 生产
 
-> 命令速查 → **[docs/COMMANDS.md](docs/COMMANDS.md)** ② 演示、③ 生产
+> 部署说明 → **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**；开发命令 → **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**
 
 ```powershell
 copy .env.example .env    # 首次：编辑 JWT、AI Key 等
@@ -223,7 +221,7 @@ Docker 环境默认启用 MinIO（`NOTO_MINIO_ENABLED=true`），笔记编辑器
 
 </details>
 
-MinIO 与数据库由 `dev-up.ps1` / `demo-up.ps1` 一并启动，无需单独脚本。更多命令 → [docs/COMMANDS.md](docs/COMMANDS.md)。
+MinIO 与数据库由 `dev-up.ps1` / `demo-up.ps1` 一并启动，无需单独脚本。更多命令 → [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
 
 ---
 
@@ -457,7 +455,7 @@ MinIO 与数据库由 `dev-up.ps1` / `demo-up.ps1` 一并启动，无需单独�
 
 | 优先级 | 事项 | 状态 |
 |--------|------|------|
-| **P0** | H1 核心流程 E2E 自测清单 | ✅ `docs/E2E_CHECKLIST.md` |
+| **P0** | H1 核心流程 E2E 自测清单 | ✅ 已合并至 `docs/DEVELOPMENT.md` |
 | **P0** | H2 关键 API 集成测试 | ✅ Testcontainers + PostgreSQL |
 | **P0** | H3 新用户 Onboarding | ✅ 注册引导 + 空状态 + 可关闭 |
 | **P1** | H4 RAG 性能（pgvector） | ✅ pgvector + HNSW；plain Postgres 自动 fallback |
@@ -539,18 +537,14 @@ MinIO 与数据库由 `dev-up.ps1` / `demo-up.ps1` 一并启动，无需单独�
 
 ## 文档索引
 
-建议阅读顺序：
+统一阅读入口见 [docs/DOCS_GUIDE.md](docs/DOCS_GUIDE.md)。当前只保留必要文档：
 
-1. `README.md`（本文 — 进度与 AI 路线图）
-2. `docs/DEV_DEPLOY.md`（**开发与 Docker 部署步骤**）
-3. `docs/MULTI_PLATFORM.md`（**多端路线图与移动 Web MVP**）
-4. `docs/WEB_DESKTOP_POLISH.md`（**Web 桌面完善路线图**）
-5. `docs/E2E_CHECKLIST.md`（核心流程自测清单）
-6. `总索引文档.md`
-7. `PRD_正式版.txt`
-8. `API请求响应设计.md`
-9. `数据库表设计.md`
-10. `技术架构设计.txt`
+1. `README.md`（本文 — 项目概览、功能、技术栈）
+2. `docs/DOCS_GUIDE.md`（按角色/视角安排阅读顺序）
+3. `docs/DEVELOPMENT.md`（本地开发、命令、调试、E2E 检查）
+4. `docs/DEPLOYMENT.md`（Docker 演示、生产部署、IPv6 家庭服务器）
+5. `docs/AI_SHOWCASE.md`（简历展示、AI 演示脚本、RAG/Agent 评测）
+6. `docs/MOBILE.md`（移动 Web / uni-app）
 
 ---
 
@@ -562,10 +556,10 @@ MinIO 与数据库由 `dev-up.ps1` / `demo-up.ps1` 一并启动，无需单独�
 | 高 | 附件 / 图片上传（MinIO） | ✅ 编辑器图片上传已接入 |
 | 中 | 日志与审计（`audit_log`） | ✅ AI 调用已接入 |
 | 中 | Docker 部署与演示数据 | ✅ Compose 已提供 |
-| 中 | 多端路线图 | ✅ `docs/MULTI_PLATFORM.md` |
-| 中 | Web 桌面完善 | ✅ `docs/WEB_DESKTOP_POLISH.md` 阶段九 A 已完成 |
+| 中 | 多端路线图 | ✅ 已合并至 `docs/MOBILE.md` |
+| 中 | Web 桌面完善 | ✅ 已沉淀至 `README.md` 与代码实现 |
 | 高 | 核心集成测试 | ✅ Testcontainers（见 `backend/src/test`） |
-| 高 | E2E 自测清单 | ✅ `docs/E2E_CHECKLIST.md` |
+| 高 | E2E 自测清单 | ✅ 已合并至 `docs/DEVELOPMENT.md` |
 | 低 | 每日/周总结类提醒 | ✅ 页内 + 系统通知（见 H5） |
 
 AI 相关规划见 [AI 能力路线图](#ai-能力路线图) 与 [AI 体验深化路线图（后续推进）](#ai-体验深化路线图后续推进)。阶段八见 [阶段八 · 稳定与体验](#阶段八--稳定与体验当前推进)。

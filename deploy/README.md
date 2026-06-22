@@ -1,7 +1,7 @@
 # Noto · 知微 — 生产部署
 
 > **云服务器（Linux）用本目录脚本**；Windows 本地可用 `scripts/prod-*.ps1` 做预演。  
-> 完整说明见 [docs/DEV_DEPLOY.md §5.7](../docs/DEV_DEPLOY.md)。
+> 完整说明见 [docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md)。
 
 ---
 
