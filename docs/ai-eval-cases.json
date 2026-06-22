@@ -1,0 +1,94 @@
+[
+  {
+    "id": "rag-project-context-001",
+    "category": "knowledge_recall",
+    "question": "Noto 的 AI 能力核心闭环是什么？",
+    "expectedAnswerPoints": [
+      "知识输入",
+      "RAG 问答",
+      "提取待办",
+      "行动看板",
+      "提醒或复盘"
+    ],
+    "expectedEvidence": [
+      "README.md",
+      "docs/WEB_DESKTOP_POLISH.md"
+    ],
+    "risk": "回答只列 AI 功能，没有解释知识到行动的闭环"
+  },
+  {
+    "id": "rag-citation-002",
+    "category": "grounded_answer",
+    "question": "项目为什么选择可确认的 Agent 工作流，而不是让 AI 自动写库？",
+    "expectedAnswerPoints": [
+      "所有写操作预览",
+      "用户确认",
+      "降低误操作风险",
+      "审计日志",
+      "业务数据可信"
+    ],
+    "expectedEvidence": [
+      "README.md",
+      "backend/src/main/java/com/noto/zhihui/service/impl/AiAgentServiceImpl.java"
+    ],
+    "risk": "回答成通用 AI 安全原则，没有引用项目里的确认链路"
+  },
+  {
+    "id": "rag-retrieval-003",
+    "category": "retrieval_quality",
+    "question": "Noto 的知识库问答如何降低幻觉？",
+    "expectedAnswerPoints": [
+      "文档分块",
+      "embedding 索引",
+      "pgvector 检索",
+      "关键词混合召回",
+      "引用文档跳转",
+      "知识缺口提示"
+    ],
+    "expectedEvidence": [
+      "README.md",
+      "backend/src/main/java/com/noto/zhihui/service/impl/NoteRagSearchServiceImpl.java",
+      "backend/src/main/java/com/noto/zhihui/service/impl/AiServiceImpl.java"
+    ],
+    "risk": "回答只说使用 RAG，没有说明召回、引用和缺口提示"
+  },
+  {
+    "id": "agent-action-004",
+    "category": "action_intelligence",
+    "question": "把会议纪要整理成待办并设置提醒，这条链路在系统里如何执行？",
+    "expectedAnswerPoints": [
+      "搜索或定位会议笔记",
+      "摘要",
+      "提取待办",
+      "创建待办",
+      "创建提醒",
+      "用户确认",
+      "写入任务记录"
+    ],
+    "expectedEvidence": [
+      "frontend/src/api/aiAgent.ts",
+      "backend/src/main/java/com/noto/zhihui/agent/AgentToolExecutor.java",
+      "backend/src/main/java/com/noto/zhihui/service/impl/AiAgentServiceImpl.java"
+    ],
+    "risk": "没有展示工具调用步骤，导致看起来像普通聊天"
+  },
+  {
+    "id": "workflow-demo-005",
+    "category": "product_loop",
+    "question": "Noto 的 AI 能力和待办、提醒、复盘是如何结合的？",
+    "expectedAnswerPoints": [
+      "待办拆解",
+      "逾期建议",
+      "每日 digest",
+      "完成复盘",
+      "周报草稿",
+      "回写笔记"
+    ],
+    "expectedEvidence": [
+      "README.md",
+      "frontend/src/views/dashboard/DashboardView.vue",
+      "backend/src/main/java/com/noto/zhihui/service/impl/AiServiceImpl.java"
+    ],
+    "risk": "只展示单点功能，没有讲出产品闭环"
+  }
+]
