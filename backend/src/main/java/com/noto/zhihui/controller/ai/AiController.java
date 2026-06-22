@@ -19,11 +19,13 @@ import com.noto.zhihui.service.AiDigestService;
 import com.noto.zhihui.service.AiWeeklyRetroService;
 import com.noto.zhihui.service.AiService;
 import com.noto.zhihui.service.AiStreamSink;
+import com.noto.zhihui.service.AuditLogService;
 import com.noto.zhihui.service.NoteService;
 import com.noto.zhihui.vo.ai.AiAskVO;
 import com.noto.zhihui.vo.ai.AiReferenceVO;
 import com.noto.zhihui.vo.ai.AiRouteVO;
 import com.noto.zhihui.vo.ai.AiStatusVO;
+import com.noto.zhihui.vo.ai.AiObservabilitySummaryVO;
 import com.noto.zhihui.vo.ai.NoteSummaryVO;
 import com.noto.zhihui.vo.ai.NoteSynthesizeVO;
 import com.noto.zhihui.vo.ai.NoteTransformVO;
@@ -63,6 +65,7 @@ public class AiController {
     private final AiDigestService aiDigestService;
     private final AiWeeklyRetroService aiWeeklyRetroService;
     private final AiChatSessionService aiChatSessionService;
+    private final AuditLogService auditLogService;
     private final NoteService noteService;
     private final NotoAiProperties aiProperties;
     private final ObjectMapper objectMapper;
@@ -73,6 +76,7 @@ public class AiController {
             AiDigestService aiDigestService,
             AiWeeklyRetroService aiWeeklyRetroService,
             AiChatSessionService aiChatSessionService,
+            AuditLogService auditLogService,
             NoteService noteService,
             NotoAiProperties aiProperties,
             ObjectMapper objectMapper
@@ -82,6 +86,7 @@ public class AiController {
         this.aiDigestService = aiDigestService;
         this.aiWeeklyRetroService = aiWeeklyRetroService;
         this.aiChatSessionService = aiChatSessionService;
+        this.auditLogService = auditLogService;
         this.noteService = noteService;
         this.aiProperties = aiProperties;
         this.objectMapper = objectMapper;
@@ -90,6 +95,11 @@ public class AiController {
     @GetMapping("/status")
     public ApiResponse<AiStatusVO> status() {
         return ApiResponse.success(aiService.status(), null);
+    }
+
+    @GetMapping("/observability/summary")
+    public ApiResponse<AiObservabilitySummaryVO> observabilitySummary() {
+        return ApiResponse.success(auditLogService.aiObservabilitySummary(requireUserId()), null);
     }
 
     @PostMapping("/notes/{id}/summarize")

@@ -14,6 +14,7 @@ const SearchView = () => import('../views/search/SearchView.vue');
 const TodosView = () => import('../views/todos/TodosView.vue');
 const RemindersView = () => import('../views/reminders/RemindersView.vue');
 const AiView = () => import('../views/ai/AiView.vue');
+const AiShowcaseView = () => import('../views/ai-showcase/AiShowcaseView.vue');
 const DriveView = () => import('../views/drive/DriveView.vue');
 const MySharesView = () => import('../views/share/MySharesView.vue');
 const ShareView = () => import('../views/share/ShareView.vue');
@@ -93,6 +94,11 @@ const router = createRouter({
           path: 'ai',
           name: 'ai',
           component: AiView,
+        },
+        {
+          path: 'ai-showcase',
+          name: 'ai-showcase',
+          component: AiShowcaseView,
         },
         {
           path: 'ai/agent',

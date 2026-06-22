@@ -30,6 +30,21 @@ Noto · 知微帮助用户记录、整理、检索知识，并结合 **LangChain
 
 > 说明：`任务清单.csv`、`总索引文档.md` 部分条目已滞后，**以本 README 与代码为准**。
 
+### 简历向 AI 展示
+
+本项目的 AI 展示重点不是“接入一个聊天框”，而是围绕 **私有知识 → 可执行行动 → 复盘沉淀** 做完整工程闭环。
+
+| 展示点 | 项目落点 |
+|--------|----------|
+| RAG 私有知识库 | 文档分块、DashScope embedding、pgvector 检索、引用跳转 |
+| 可确认 Agent | 自然语言拆解为搜索、摘要、提取待办、创建提醒等工具调用，写操作需确认 |
+| AI 工作流闭环 | 摘要、待办提取、任务拆解、逾期建议、每日 digest、周报复盘 |
+| 工程化能力 | SSE 流式回答、AI 调用审计、Docker 部署、Testcontainers 集成测试 |
+
+- Web 展示页：`/ai-showcase`
+- 演示脚本：[docs/AI_RESUME_DEMO.md](docs/AI_RESUME_DEMO.md)
+- RAG 评测协议：[docs/AI_EVAL.md](docs/AI_EVAL.md)
+
 ---
 
 ## 核心功能

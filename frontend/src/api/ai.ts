@@ -8,6 +8,21 @@ export interface AiStatus {
   provider: string;
 }
 
+export interface AiObservabilityAction {
+  actionType: string;
+  resourceType?: string | null;
+  success: boolean;
+  latencyMs?: number | null;
+  createdAt?: string;
+}
+
+export interface AiObservabilitySummary {
+  totalCalls: number;
+  successRate: number;
+  averageLatencyMs?: number | null;
+  recentActions: AiObservabilityAction[];
+}
+
 export interface NoteSummaryResult {
   summary: string;
   keyPoints: string[];
@@ -147,6 +162,10 @@ function parseSseBlock(block: string, handlers: AiStreamHandlers) {
 
 export function getAiStatus() {
   return http.get<AiStatus>('/ai/status');
+}
+
+export function getAiObservabilitySummary() {
+  return http.get<AiObservabilitySummary>('/ai/observability/summary');
 }
 
 export interface AiRouteResult {

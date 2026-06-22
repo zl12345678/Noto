@@ -1,5 +1,7 @@
 package com.noto.zhihui.service;
 
+import com.noto.zhihui.vo.ai.AiObservabilitySummaryVO;
+
 import java.util.Map;
 
 public interface AuditLogService {
@@ -12,4 +14,6 @@ public interface AuditLogService {
             Long resourceId,
             Map<String, Object> detail
     );
+
+    AiObservabilitySummaryVO aiObservabilitySummary(Long userId);
 }

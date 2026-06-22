@@ -36,6 +36,12 @@
                 <span>AI 助手</span>
               </span>
             </a-menu-item>
+            <a-menu-item key="ai-showcase">
+              <span class="entry-item">
+                <span class="entry-dot purple"></span>
+                <span>AI 展示</span>
+              </span>
+            </a-menu-item>
           </a-menu>
         </div>
 
@@ -460,6 +466,7 @@ const selectedKeys = computed(() => {
   if (route.name === 'todos') return ['todos'];
   if (route.name === 'reminders') return ['reminders'];
   if (route.name === 'ai') return ['ai'];
+  if (route.name === 'ai-showcase') return ['ai-showcase'];
   if (route.name === 'profile') return [];
   return [];
 });
@@ -697,6 +704,10 @@ function handleMenuClick({ key }: { key: string }) {
   }
   if (key === 'ai') {
     activateModuleTab('ai', () => router.push('/ai'));
+    return;
+  }
+  if (key === 'ai-showcase') {
+    activateModuleTab('ai-showcase', () => router.push('/ai-showcase'));
     return;
   }
   if (key.startsWith('workspace:')) {

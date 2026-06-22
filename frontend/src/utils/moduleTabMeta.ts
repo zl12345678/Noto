@@ -34,6 +34,9 @@ export function resolveModuleTabMeta(
   if (name === 'ai') {
     return { id: 'ai', label: 'AI 助手', icon: 'ai', closable: true };
   }
+  if (name === 'ai-showcase') {
+    return { id: 'ai-showcase', label: 'AI 展示', icon: 'ai', closable: true };
+  }
   if (name === 'search') {
     const q = typeof route.query.q === 'string' ? route.query.q.trim() : '';
     return {
