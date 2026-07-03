@@ -24,11 +24,25 @@ if [[ $SKIP_CHECK -eq 0 ]]; then
 fi
 
 echo "Building and starting stack..."
+chmod 644 建表SQL.sql 2>/dev/null || true
 "${COMPOSE[@]}" up -d --build
 
 echo "Waiting for health..."
+if [[ -f .env ]]; then
+  FRONTEND_HOST="${FRONTEND_HOST:-$(sed -n 's/^FRONTEND_HOST=//p' .env | tail -n 1)}"
+  FRONTEND_PORT="${FRONTEND_PORT:-$(sed -n 's/^FRONTEND_PORT=//p' .env | tail -n 1)}"
+fi
+FRONTEND_PORT="${FRONTEND_PORT:-8080}"
+FRONTEND_HEALTH_HOST="127.0.0.1"
+case "${FRONTEND_HOST:-127.0.0.1}" in
+  "::" | "[::]")
+    FRONTEND_HEALTH_HOST="[::1]"
+    ;;
+esac
+FRONTEND_HEALTH_URL="http://${FRONTEND_HEALTH_HOST}:${FRONTEND_PORT}/api/v1/health"
+
 for i in $(seq 1 60); do
-  if curl -fsS http://127.0.0.1:8080/api/v1/health | grep -q '"code":0'; then
+  if curl -fsS "$FRONTEND_HEALTH_URL" | grep -q '"code":0'; then
     echo "Health check: OK"
     break
   fi
@@ -43,7 +57,7 @@ docker ps --filter name=noto- --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}
 cat <<'EOF'
 
 ========== Production stack ==========
-  Health: http://127.0.0.1:8080/api/v1/health
+  Health: see FRONTEND_HOST/FRONTEND_PORT in .env
 
 Next steps:
   1. sudo cp deploy/nginx/noto.conf /etc/nginx/sites-available/noto

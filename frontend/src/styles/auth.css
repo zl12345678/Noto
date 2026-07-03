@@ -1,11 +1,15 @@
 /* 认证页 — 浅色 */
 
 .auth-page {
+  height: 100dvh;
   min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 32px 24px 40px;
+  box-sizing: border-box;
 }
 
 .auth-shell {
@@ -157,8 +161,15 @@
 }
 
 @media (max-width: 900px) {
+  .auth-page {
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 20px 16px calc(64px + env(safe-area-inset-bottom));
+  }
+
   .auth-shell {
     grid-template-columns: 1fr;
+    width: 100%;
   }
 
   .auth-hero h1 {
@@ -167,5 +178,30 @@
 
   .auth-features {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .auth-panel-shell {
+    display: none;
+  }
+
+  .auth-card-shell {
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .auth-card {
+    padding: 28px 22px;
+    border-radius: 16px;
+  }
+
+  .auth-card-head h2 {
+    font-size: 24px;
+  }
+
+  .auth-form {
+    margin-top: 20px;
   }
 }

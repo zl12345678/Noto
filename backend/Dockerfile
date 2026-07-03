@@ -1,5 +1,6 @@
 FROM maven:3.9-eclipse-temurin-17-alpine AS build
 WORKDIR /app
+COPY docker/maven-settings.xml /root/.m2/settings.xml
 COPY pom.xml ./
 RUN mvn -q -B dependency:go-offline -DskipTests
 COPY src ./src

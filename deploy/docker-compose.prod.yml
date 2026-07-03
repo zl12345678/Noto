@@ -1,10 +1,10 @@
 # 云服务器生产 Compose 片段（与主 compose 合并使用）
-# 需要 Docker Compose 2.24+（支持 ports: !reset）
+# 需要 Docker Compose 2.24+（支持 ports: !override）
 #
 # 用法：
 #   docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build
 #
-# 效果：frontend/backend 仅监听 127.0.0.1；db/minio 不映射到宿主机
+# 效果：frontend/backend 默认仅监听 127.0.0.1；db/minio 不映射到宿主机
 
 services:
   db:
@@ -14,9 +14,9 @@ services:
     ports: !reset []
 
   backend:
-    ports:
+    ports: !override
       - "127.0.0.1:${BACKEND_PORT:-9086}:9086"
 
   frontend:
-    ports:
-      - "127.0.0.1:${FRONTEND_PORT:-8080}:80"
+    ports: !override
+      - "${FRONTEND_HOST:-127.0.0.1}:${FRONTEND_PORT:-8080}:80"

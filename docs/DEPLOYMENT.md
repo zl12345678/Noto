@@ -10,6 +10,7 @@
 | Docker 演示 | 一条命令跑全栈给别人看 | `.\scripts\demo-up.ps1` |
 | 生产部署 | Linux + Docker Compose + Nginx HTTPS | `deploy/prod-up.sh` |
 | 家庭 IPv6 服务器 | 闲置 Ubuntu Server 对外提供 HTTPS | 本文“IPv6 家庭服务器” |
+| 飞牛 OS NAS | 飞牛 Docker + IPv6 域名；可直连高端口或反向代理 HTTPS | [FNOS_DOCKER_OPS.md](./FNOS_DOCKER_OPS.md) |
 
 ## Docker 演示
 
@@ -110,6 +111,23 @@ openssl rand -base64 48
 
 适用：闲置笔记本已安装 Ubuntu Server，IPv6 已开启，能 SSH，Docker 已安装，域名申请中。
 
+飞牛 OS 的实际操作、Docker 国内镜像源、IPv6 高端口直连、Lucky / Nginx Proxy Manager 反代、更新和备份见 [FNOS_DOCKER_OPS.md](./FNOS_DOCKER_OPS.md)。
+
+当前飞牛直连 IPv6 高端口方案：
+
+```env
+FRONTEND_HOST=[::]
+FRONTEND_PORT=18080
+```
+
+访问：
+
+```text
+http://notoai.cn:18080
+```
+
+这种方式不接管飞牛系统 Nginx，飞牛后台继续使用局域网地址 `http://飞牛局域网IP:5666`。
+
 前置检查：
 
 ```bash
@@ -166,6 +184,7 @@ curl http://127.0.0.1:8080/api/v1/health
 | 更新 | `./deploy/prod-update.sh` | `.\scripts\prod-update.ps1` |
 | 备份 | `./deploy/prod-backup.sh /var/backups/noto` | `.\scripts\prod-backup.ps1` |
 | 日志 | `docker compose logs -f backend` | `docker compose logs -f backend` |
+| 飞牛镜像源 | `bash deploy/fnos-docker-mirror.sh` | 不适用 |
 
 ## 上线检查清单
 

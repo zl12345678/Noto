@@ -9,6 +9,7 @@
 | [../README.md](../README.md) | 项目定位、核心功能、技术栈、快速启动 |
 | [DEVELOPMENT.md](./DEVELOPMENT.md) | 本地开发、命令速查、调试、测试和演示检查 |
 | [DEPLOYMENT.md](./DEPLOYMENT.md) | Docker 演示、生产部署、IPv6 家庭服务器、备份运维 |
+| [FNOS_DOCKER_OPS.md](./FNOS_DOCKER_OPS.md) | 飞牛 OS 部署、Docker 镜像源、反向代理、更新和备份 |
 | [AI_SHOWCASE.md](./AI_SHOWCASE.md) | 简历展示、AI 演示脚本、RAG/Agent 评测方法 |
 | [MOBILE.md](./MOBILE.md) | 移动 Web / uni-app 客户端开发和打包 |
 | [ai-eval-cases.json](./ai-eval-cases.json) | AI 评测用例数据 |
@@ -31,8 +32,9 @@
 ### 部署 / 运维视角
 
 1. [DEPLOYMENT.md](./DEPLOYMENT.md) - 生产部署、IPv6、Nginx、HTTPS、备份。
-2. [DEVELOPMENT.md](./DEVELOPMENT.md) - 查 Windows 本机演示和脚本速查。
-3. [../deploy/README.md](../deploy/README.md) - 只在需要看部署脚本索引时打开。
+2. [FNOS_DOCKER_OPS.md](./FNOS_DOCKER_OPS.md) - 飞牛 OS 上线、镜像源、反代和日常维护。
+3. [DEVELOPMENT.md](./DEVELOPMENT.md) - 查 Windows 本机演示和脚本速查。
+4. [../deploy/README.md](../deploy/README.md) - 只在需要看部署脚本索引时打开。
 
 ### 移动端开发视角
 
