@@ -1,0 +1,669 @@
+# 飞牛 OS Docker 部署与运维手册
+
+> 目标：在飞牛 OS 闲置笔记本上部署 Noto，并能理解 Docker Compose、镜像源、反向代理、更新、备份和常见故障处理。
+
+## 1. 部署结构
+
+Noto 生产环境由 Docker Compose 管理 4 个容器：
+
+| 容器 | 作用 | 是否应公网暴露 |
+|------|------|----------------|
+| `noto-frontend` | Nginx 静态前端，并把 `/api/` 转发给后端 | 推荐通过反向代理访问；也可直连 IPv6 高端口 |
+| `noto-backend` | Spring Boot API 服务 | 否 |
+| `noto-db` | PostgreSQL + pgvector 数据库 | 否 |
+| `noto-minio` | 附件与图片对象存储 | 否 |
+
+推荐入口：
+
+```text
+Internet :443
+    ↓
+飞牛上的 Lucky / Nginx Proxy Manager / 宿主机 Nginx
+    ↓
+127.0.0.1:8080
+    ↓
+noto-frontend
+    ↓ Docker 内网
+noto-backend / noto-db / noto-minio
+```
+
+公网只开放 `80/tcp`、`443/tcp`，维护时再按需开放 `22/tcp`。不要开放 `5432`、`9000`、`9001`、`9086`。
+
+当前飞牛实测可用的直连入口：
+
+```text
+Internet IPv6 :18080
+    ↓
+飞牛宿主机 [::]:18080
+    ↓
+noto-frontend
+    ↓ Docker 内网
+noto-backend / noto-db / noto-minio
+```
+
+这种方式不改飞牛系统 Nginx，不暴露飞牛后台，但访问地址需要带端口：
+
+```text
+http://notoai.cn:18080
+```
+
+## 2. 首次准备
+
+### 2.1 开启飞牛 SSH
+
+在飞牛 OS 后台开启 SSH 后，从电脑连接：
+
+```bash
+ssh yolo@飞牛局域网IP
+```
+
+如果使用 Xshell，登录后所有命令都在 Xshell 中执行。
+
+### 2.2 准备项目目录
+
+```bash
+mkdir -p /vol1/1000/docker/noto
+cd /vol1/1000/docker/noto
+```
+
+如果你的数据盘不是 `/vol1/1000`，先查看：
+
+```bash
+ls /vol*
+pwd
+```
+
+### 2.3 获取代码
+
+网络正常时：
+
+```bash
+git clone https://github.com/zl12345678/Noto.git .
+```
+
+如果飞牛无法访问 GitHub，从 Windows 打包上传：
+
+```powershell
+cd E:\Noto
+tar --exclude=.git `
+    --exclude=frontend/node_modules `
+    --exclude=mobile/node_modules `
+    --exclude=backend/target `
+    --exclude=.idea `
+    --exclude=.vscode `
+    -czf $env:TEMP\noto.tar.gz .
+
+scp $env:TEMP\noto.tar.gz yolo@飞牛局域网IP:/vol1/1000/docker/noto/
+```
+
+飞牛上解压：
+
+```bash
+cd /vol1/1000/docker/noto
+tar -xzf noto.tar.gz
+rm noto.tar.gz
+```
+
+## 3. 配置 Docker 国内镜像源
+
+飞牛拉取 Docker Hub 镜像超时时，先配置镜像源。Docker 使用 `/etc/docker/daemon.json` 持久保存镜像源配置。
+
+项目已提供脚本：
+
+```bash
+cd /vol1/1000/docker/noto
+bash deploy/fnos-docker-mirror.sh
+```
+
+如果默认镜像源仍然超时，切换备用源：
+
+```bash
+cd /vol1/1000/docker/noto
+bash deploy/fnos-docker-mirror.sh --alternate
+```
+
+脚本会备份原 `/etc/docker/daemon.json`、写入镜像源、重启 Docker，并用 `hello-world` 测试拉取。
+
+也可以手动配置：
+
+```bash
+sudo mkdir -p /etc/docker
+
+if [ -f /etc/docker/daemon.json ]; then
+  sudo cp /etc/docker/daemon.json /etc/docker/daemon.json.bak.$(date +%Y%m%d-%H%M%S)
+fi
+
+sudo tee /etc/docker/daemon.json > /dev/null <<'EOF'
+{
+  "registry-mirrors": [
+    "https://docker.1panel.live",
+    "https://docker.1ms.run",
+    "https://docker.m.daocloud.io"
+  ]
+}
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+docker info | grep -A 10 -i "Registry Mirrors"
+```
+
+验证：
+
+```bash
+sudo docker pull hello-world
+```
+
+如果仍然超时，替换为备用源：
+
+```bash
+sudo tee /etc/docker/daemon.json > /dev/null <<'EOF'
+{
+  "registry-mirrors": [
+    "https://docker.xuanyuan.me",
+    "https://docker.1panel.live",
+    "https://docker.1ms.run",
+    "https://docker.m.daocloud.io"
+  ]
+}
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+sudo docker pull hello-world
+```
+
+回滚：
+
+```bash
+ls -lh /etc/docker/daemon.json.bak.*
+sudo cp /etc/docker/daemon.json.bak.你要恢复的文件 /etc/docker/daemon.json
+sudo systemctl restart docker
+```
+
+## 4. 配置 Noto 生产环境变量
+
+```bash
+cd /vol1/1000/docker/noto
+cp deploy/env.prod.example .env
+nano .env
+```
+
+必须修改：
+
+```env
+POSTGRES_PASSWORD=你的数据库强密码
+MINIO_ROOT_PASSWORD=你的MinIO强密码
+NOTO_JWT_SECRET=至少32位随机字符串
+NOTO_DEMO_ENABLED=false
+```
+
+飞牛直连 IPv6 高端口方式还需要设置：
+
+```env
+FRONTEND_HOST=[::]
+FRONTEND_PORT=18080
+BACKEND_PORT=19086
+```
+
+说明：
+
+- `FRONTEND_HOST=[::]` 让前端容器监听 IPv6。
+- `FRONTEND_PORT=18080` 避开飞牛系统 Nginx 已占用的 `80/443`。
+- `BACKEND_PORT=19086` 只绑定本机，避免与已有 `9086` 服务冲突。
+
+生成 JWT 密钥：
+
+```bash
+openssl rand -base64 48
+```
+
+启用 AI：
+
+```env
+NOTO_AI_ENABLED=true
+AI_DASHSCOPE_API_KEY=你的百炼Key
+```
+
+暂不启用 AI：
+
+```env
+NOTO_AI_ENABLED=false
+AI_DASHSCOPE_API_KEY=
+```
+
+`nano` 保存退出：
+
+```text
+Ctrl + O
+Enter
+Ctrl + X
+```
+
+## 5. 启动项目
+
+先检查 `.env`：
+
+```bash
+cd /vol1/1000/docker/noto
+chmod +x deploy/*.sh
+./deploy/prod-check.sh --strict
+```
+
+如果提示 Docker 权限不足，先用 `sudo`：
+
+```bash
+sudo ./deploy/prod-up.sh
+```
+
+长期免 `sudo`：
+
+```bash
+sudo usermod -aG docker yolo
+exit
+```
+
+重新 SSH 登录后验证：
+
+```bash
+docker ps
+```
+
+以后可直接运行：
+
+```bash
+cd /vol1/1000/docker/noto
+./deploy/prod-up.sh
+```
+
+## 6. 验证服务
+
+默认反向代理模式的本机健康检查：
+
+```bash
+curl http://127.0.0.1:8080/api/v1/health
+```
+
+飞牛直连 IPv6 高端口模式的健康检查：
+
+```bash
+curl -g -6 "http://[::1]:18080/api/v1/health"
+curl -g -6 "http://[你的飞牛公网IPv6]:18080/api/v1/health"
+```
+
+期望看到：
+
+```json
+{"code":0,...}
+```
+
+查看容器：
+
+```bash
+docker ps --filter name=noto-
+```
+
+查看日志：
+
+```bash
+docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml logs -f backend
+docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml logs -f frontend
+```
+
+## 7. 配置域名与反向代理
+
+如果只想让域名打开项目、不想让域名打开飞牛后台，有两种方式：
+
+| 方式 | 访问地址 | 是否需要反向代理 |
+|------|----------|------------------|
+| 直连 IPv6 高端口 | `http://notoai.cn:18080` | 不需要 |
+| 正式 HTTPS | `https://notoai.cn` | 需要 Lucky / Nginx Proxy Manager / Cloudflare Tunnel / 系统 Nginx |
+
+当前已验证的方案是直连 IPv6 高端口：飞牛后台仍使用局域网地址 `http://飞牛局域网IP:5666`，域名只用于项目。
+
+### 7.1 DNS
+
+在域名解析中配置：
+
+```text
+AAAA    notoai.cn    飞牛公网IPv6地址
+```
+
+家庭 IPv6 部署通常不要保留错误的 `A` 记录；如果没有可用公网 IPv4，建议只保留 `AAAA`。
+
+外部网络验证：
+
+```bash
+ping -6 notoai.cn
+```
+
+如果不通，检查路由器 IPv6 防火墙、飞牛防火墙、运营商是否允许入站。
+
+### 7.2 不用反向代理：IPv6 高端口直连
+
+`.env`：
+
+```env
+FRONTEND_HOST=[::]
+FRONTEND_PORT=18080
+```
+
+启动：
+
+```bash
+cd /vol1/1000/docker/noto
+sudo ./deploy/prod-up.sh
+```
+
+确认监听：
+
+```bash
+sudo ss -lntp | grep 18080
+```
+
+应看到类似：
+
+```text
+[::]:18080
+```
+
+飞牛本机验证：
+
+```bash
+curl -g -6 "http://[::1]:18080/api/v1/health"
+curl -g -6 "http://[你的飞牛公网IPv6]:18080/api/v1/health"
+```
+
+外网验证建议使用手机 4G/5G，关闭 Wi-Fi 后访问：
+
+```text
+http://notoai.cn:18080/api/v1/health
+```
+
+如果飞牛本机可访问公网 IPv6，但手机流量不可访问，通常是路由器或光猫的 IPv6 入站策略未放行 `18080/tcp`。
+
+### 7.3 Lucky / Nginx Proxy Manager
+
+如果反代工具运行在飞牛宿主机或 host 网络中：
+
+```text
+域名：notoai.cn
+目标：http://127.0.0.1:8080
+证书：Let's Encrypt
+WebSocket/SSE：开启或关闭缓存
+```
+
+如果反代工具是普通 Docker bridge 网络容器，容器里的 `127.0.0.1` 指的是反代容器本身，不是飞牛宿主机。此时推荐把反代容器改成 host 网络，或者让反代容器与 Noto 进入同一个 Docker 网络后访问 `http://noto-frontend:80`。
+
+浏览器验证：
+
+```text
+https://notoai.cn
+https://notoai.cn/api/v1/health
+```
+
+飞牛 OS 自带的 `/usr/trim/nginx` 会服务系统管理入口，并可能在重载时恢复主配置。不要长期依赖手工改 `/usr/trim/nginx/conf/nginx.conf`。更稳的做法是在飞牛自带反向代理 UI、Lucky 或 Nginx Proxy Manager 中新增站点：
+
+```text
+域名：notoai.cn
+协议：http
+目标主机：127.0.0.1
+目标端口：8080
+```
+
+如果从外网访问超时，先确认：
+
+- DNS 中不要保留错误的 `A` 记录；家庭 IPv6 部署通常只需要 `AAAA`。
+- 使用直连高端口时，路由器 IPv6 防火墙放行飞牛这台设备的 `18080/tcp`。
+- 使用正式 HTTPS 反向代理时，路由器 IPv6 防火墙放行飞牛这台设备的 `80/tcp` 和 `443/tcp`。
+- 飞牛防火墙放行对应端口。
+- 本机验证必须先通过：`curl -g -6 "http://[::1]:18080/api/v1/health"` 或 `curl http://127.0.0.1:8080/api/v1/health`。
+
+## 8. Docker Compose 基础理解
+
+项目启动命令实际合并了两个 Compose 文件：
+
+```bash
+docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build
+```
+
+含义：
+
+| 参数 | 说明 |
+|------|------|
+| `docker-compose.yml` | 定义数据库、后端、MinIO、前端怎么构建和连接 |
+| `deploy/docker-compose.prod.yml` | 生产覆盖：隐藏 db/minio 端口；前端默认绑定到 `127.0.0.1:8080`，也可通过 `FRONTEND_HOST/FRONTEND_PORT` 改为 IPv6 高端口；后端只绑定到本机端口 |
+| `up -d` | 后台启动 |
+| `--build` | 启动前重新构建前后端镜像 |
+
+常用命令：
+
+```bash
+# 查看容器
+docker ps
+
+# 查看所有容器，包括退出的
+docker ps -a
+
+# 查看镜像
+docker images
+
+# 查看日志
+docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml logs -f
+
+# 停止但保留数据卷
+./deploy/prod-down.sh
+
+# 停止并删除数据卷，危险，会清空数据库和 MinIO 数据
+./deploy/prod-down.sh --volumes
+```
+
+## 9. 更新项目
+
+如果飞牛能访问 GitHub：
+
+```bash
+cd /vol1/1000/docker/noto
+./deploy/prod-update.sh
+```
+
+如果代码是从 Windows 上传的：
+
+1. Windows 重新打包上传。
+2. 飞牛解压覆盖项目文件。
+3. 执行：
+
+```bash
+cd /vol1/1000/docker/noto
+sudo ./deploy/prod-up.sh
+```
+
+更新前建议先备份数据库。
+
+## 10. 备份与恢复
+
+### 10.1 手动备份数据库
+
+```bash
+cd /vol1/1000/docker/noto
+mkdir -p /vol1/1000/backups/noto
+./deploy/prod-backup.sh /vol1/1000/backups/noto
+```
+
+备份文件形如：
+
+```text
+noto-20260630-153000.sql.gz
+```
+
+### 10.2 定时备份
+
+编辑计划任务：
+
+```bash
+crontab -e
+```
+
+每天凌晨 3 点备份：
+
+```cron
+0 3 * * * cd /vol1/1000/docker/noto && ./deploy/prod-backup.sh /vol1/1000/backups/noto >> /vol1/1000/backups/noto/backup.log 2>&1
+```
+
+### 10.3 MinIO 文件备份
+
+数据库备份只包含结构化数据。上传的图片、附件在 Docker volume `noto_minio_data` 中，也应纳入飞牛快照、同步任务或额外备份策略。
+
+查看卷：
+
+```bash
+docker volume ls | grep noto
+```
+
+## 11. 常见故障
+
+### 11.1 `permission denied while trying to connect to the Docker daemon socket`
+
+当前用户没有 Docker 权限。
+
+临时解决：
+
+```bash
+sudo ./deploy/prod-up.sh
+```
+
+长期解决：
+
+```bash
+sudo usermod -aG docker yolo
+exit
+```
+
+重新登录后验证：
+
+```bash
+docker ps
+```
+
+### 11.2 `context deadline exceeded` 或拉镜像超时
+
+说明访问 Docker Hub 或镜像源失败。
+
+处理顺序：
+
+1. 配置第 3 节的国内镜像源。
+2. `sudo docker pull hello-world` 验证。
+3. 再执行 `sudo ./deploy/prod-up.sh`。
+
+### 11.3 `failed to listen on TCP socket: address already in use`
+
+先查看生产 Compose 解析后的端口：
+
+```bash
+cd /vol1/1000/docker/noto
+docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml config | sed -n '/backend:/,/frontend:/p'
+```
+
+生产覆盖文件应使用 `ports: !override`，避免把主 `docker-compose.yml` 的端口和生产端口同时追加到同一个容器上。如果只是宿主机已有服务占用了端口，可以在 `.env` 中调整：
+
+```env
+BACKEND_PORT=19086
+FRONTEND_PORT=8080
+```
+
+前端容器通过 Docker 内网访问后端，公网入口只需要反向代理到 `FRONTEND_PORT`。
+
+如果不用反向代理、直接通过 IPv6 高端口访问：
+
+```env
+FRONTEND_HOST=[::]
+FRONTEND_PORT=18080
+```
+
+### 11.4 Maven 下载依赖超时
+
+后端 Docker 构建会在容器里执行 Maven。如果日志中出现 `repo.maven.apache.org:443 failed to respond`，说明 Maven Central 访问超时。
+
+项目的 [backend/Dockerfile](../backend/Dockerfile) 已内置 [backend/docker/maven-settings.xml](../backend/docker/maven-settings.xml)，构建时会使用阿里云 Maven 镜像。修改该配置后，重新执行：
+
+```bash
+cd /vol1/1000/docker/noto
+sudo ./deploy/prod-up.sh
+```
+
+### 11.5 `prod-check` 提示 JWT 或密码不合格
+
+编辑 `.env`：
+
+```bash
+nano .env
+```
+
+确认：
+
+```env
+NOTO_JWT_SECRET=至少32位随机字符串
+POSTGRES_PASSWORD=不是默认值
+MINIO_ROOT_PASSWORD=不是默认值
+NOTO_DEMO_ENABLED=false
+```
+
+### 11.6 健康检查不通
+
+如果使用直连 IPv6 高端口，优先测试：
+
+```bash
+curl -g -6 "http://[::1]:18080/api/v1/health"
+```
+
+如果它正常，而 `curl http://127.0.0.1:8080/api/v1/health` 不通，说明当前已经不是默认 `8080` 入口，这是正常的。
+
+查看容器状态：
+
+```bash
+docker ps -a --filter name=noto-
+```
+
+看后端日志：
+
+```bash
+docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml logs --tail=200 backend
+```
+
+看前端日志：
+
+```bash
+docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml logs --tail=200 frontend
+```
+
+如果数据库日志出现 `/docker-entrypoint-initdb.d/01-schema.sql: Permission denied`，说明 `建表SQL.sql` 权限过窄。执行：
+
+```bash
+cd /vol1/1000/docker/noto
+chmod 644 建表SQL.sql
+cat 建表SQL.sql | sudo docker exec -i noto-db psql -v ON_ERROR_STOP=1 -U postgres -d noto_zhihui
+sudo ./deploy/prod-up.sh
+```
+
+### 11.7 域名能解析但外网访问失败
+
+依次检查：
+
+1. `AAAA` 是否指向飞牛公网 IPv6。
+2. 使用 `http://notoai.cn:18080` 时，路由器 IPv6 防火墙是否放行 `18080/tcp`。
+3. 使用 `https://notoai.cn` 时，路由器 IPv6 防火墙是否放行 `80/443`。
+4. 飞牛防火墙是否放行对应端口。
+5. 反代目标是否为 `http://127.0.0.1:8080`。
+6. 如果反代在 Docker bridge 网络中，不要使用容器内的 `127.0.0.1` 指向宿主机。
+
+## 12. 上线完成检查清单
+
+- [ ] `./deploy/prod-check.sh --strict` 通过。
+- [ ] `docker ps --filter name=noto-` 中 4 个容器都在运行。
+- [ ] 默认反代模式：`curl http://127.0.0.1:8080/api/v1/health` 返回 `code:0`。
+- [ ] IPv6 高端口模式：`curl -g -6 "http://[::1]:18080/api/v1/health"` 返回 `code:0`。
+- [ ] 手机 4G/5G 访问 `http://notoai.cn:18080/api/v1/health` 返回 `code:0`，或正式 HTTPS 模式下 `https://notoai.cn/api/v1/health` 返回 `code:0`。
+- [ ] `NOTO_DEMO_ENABLED=false`。
+- [ ] PostgreSQL、MinIO、后端端口未暴露公网。
+- [ ] 已配置数据库定时备份。
+- [ ] 记录好 `.env` 的密钥和密码，不提交到 Git。

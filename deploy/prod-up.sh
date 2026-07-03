@@ -42,7 +42,7 @@ esac
 FRONTEND_HEALTH_URL="http://${FRONTEND_HEALTH_HOST}:${FRONTEND_PORT}/api/v1/health"
 
 for i in $(seq 1 60); do
-  if curl -fsS "$FRONTEND_HEALTH_URL" | grep -q '"code":0'; then
+  if curl -g -fsS "$FRONTEND_HEALTH_URL" | grep -q '"code":0'; then
     echo "Health check: OK"
     break
   fi
