@@ -317,7 +317,8 @@ docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml logs -f f
 | 方式 | 访问地址 | 是否需要反向代理 |
 |------|----------|------------------|
 | 直连 IPv6 高端口 | `http://notoai.cn:18080` | 不需要 |
-| 正式 HTTPS | `https://notoai.cn` | 需要 Lucky / Nginx Proxy Manager / Cloudflare Tunnel / 系统 Nginx |
+| 正式 HTTPS + IPv4 访问 | `https://notoai.cn` | 推荐 Cloudflare Tunnel |
+| 自建正式 HTTPS | `https://notoai.cn` | 需要 Lucky / Nginx Proxy Manager / 系统 Nginx |
 
 当前已验证的方案是直连 IPv6 高端口：飞牛后台仍使用局域网地址 `http://飞牛局域网IP:5666`，域名只用于项目。
 
@@ -418,6 +419,265 @@ https://notoai.cn/api/v1/health
 - 使用正式 HTTPS 反向代理时，路由器 IPv6 防火墙放行飞牛这台设备的 `80/tcp` 和 `443/tcp`。
 - 飞牛防火墙放行对应端口。
 - 本机验证必须先通过：`curl -g -6 "http://[::1]:18080/api/v1/health"` 或 `curl http://127.0.0.1:8080/api/v1/health`。
+
+### 7.4 Cloudflare Tunnel：IPv4/IPv6 都可访问
+
+适用目标：
+
+```text
+https://notoai.cn        IPv4 / IPv6 都能访问
+http://飞牛局域网IP:5666  飞牛后台只在局域网访问
+```
+
+Cloudflare Tunnel 的流量路径：
+
+```text
+用户 IPv4/IPv6
+    ↓
+Cloudflare 边缘节点
+    ↓
+cloudflared 隧道
+    ↓
+飞牛本地 Noto
+```
+
+这种方式不需要家里有公网 IPv4，也不需要路由器开放 `80/443` 入站。缺点是访问会经过 Cloudflare，中转速度受 Cloudflare 线路影响。
+
+#### 7.4.1 接入域名到 Cloudflare
+
+1. 在 Cloudflare 添加站点：
+
+```text
+notoai.cn
+```
+
+2. Cloudflare 会给出两个 Nameserver，例如：
+
+```text
+ainsley.ns.cloudflare.com
+brodie.ns.cloudflare.com
+```
+
+3. 到域名注册商处修改 DNS 服务器。以阿里云为例，不是在“云解析 DNS”里改 A/AAAA 记录，而是进入：
+
+```text
+域名注册控制台
+-> 域名列表
+-> notoai.cn
+-> 管理
+-> DNS 修改 / DNS服务器修改
+```
+
+4. 把原 DNS 服务器替换为 Cloudflare 给出的两个 Nameserver。
+
+5. 在 Windows 上验证 NS 是否开始生效：
+
+```cmd
+nslookup -type=NS notoai.cn 223.5.5.5
+nslookup -type=NS notoai.cn 1.1.1.1
+nslookup -type=NS notoai.cn 8.8.8.8
+```
+
+看到 Cloudflare 的 Nameserver 后，说明该 DNS 服务器已经生效。不同公共 DNS 生效时间可能不同，通常几分钟到几小时，最长可能 24-48 小时。
+
+#### 7.4.2 创建 Tunnel
+
+Cloudflare 控制台进入：
+
+```text
+Zero Trust
+-> Networks
+-> Tunnels
+-> Create Tunnel
+```
+
+选择：
+
+```text
+Cloudflared
+```
+
+Tunnel 名称可用：
+
+```text
+noto
+```
+
+创建后选择运行环境：
+
+```text
+Docker
+```
+
+页面会给出一段包含 token 的命令。token 只保存在本机或飞牛上，不要提交到 Git，不要截图公开。
+
+#### 7.4.3 在飞牛 Docker 中运行 cloudflared
+
+在飞牛终端执行：
+
+```bash
+mkdir -p /vol1/1000/docker/cloudflared
+cd /vol1/1000/docker/cloudflared
+nano docker-compose.yml
+```
+
+写入：
+
+```yaml
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    network_mode: host
+    command: tunnel --no-autoupdate run --token 你的TUNNEL_TOKEN
+```
+
+启动：
+
+```bash
+sudo docker compose up -d
+```
+
+查看状态：
+
+```bash
+sudo docker ps | grep cloudflared
+sudo docker logs -f cloudflared
+```
+
+Cloudflare Tunnel 页面应显示：
+
+```text
+Healthy
+```
+
+#### 7.4.4 添加公网域名规则
+
+进入：
+
+```text
+Zero Trust
+-> Networks
+-> Tunnels
+-> noto
+-> Routes / Public Hostname
+-> Add route / Add a public hostname
+```
+
+填写：
+
+```text
+Subdomain：留空
+Domain：notoai.cn
+Path：留空
+Service URL：http://127.0.0.1:80
+```
+
+如果 `http://127.0.0.1:80` 保存后访问失败，并且 Noto 当前只监听 IPv6，可改为：
+
+```text
+Service URL：http://[::1]:80
+```
+
+当前项目若使用飞牛直连端口 80，应在 `.env` 中设置：
+
+```env
+FRONTEND_HOST=[::]
+FRONTEND_PORT=80
+```
+
+然后重启：
+
+```bash
+cd /vol1/1000/docker/noto
+sudo bash deploy/prod-up.sh
+```
+
+飞牛本机验证：
+
+```bash
+curl -g -6 "http://[::1]/api/v1/health"
+```
+
+#### 7.4.5 Cloudflare DNS 检查
+
+Cloudflare 中进入：
+
+```text
+notoai.cn
+-> DNS
+-> Records
+```
+
+应看到 Tunnel 自动生成的记录，通常类似：
+
+```text
+Type：CNAME
+Name：notoai.cn 或 @
+Target：xxxx.cfargotunnel.com
+Proxy status：Proxied / 橙云
+```
+
+如果还有旧的 `A` 或 `AAAA` 记录指向家庭宽带地址，主域名走 Tunnel 时建议删除，避免与 Tunnel 规则冲突。
+
+如果需要保留 IPv6 直连备用入口，可单独添加：
+
+```text
+Type：AAAA
+Name：v6
+Value：飞牛公网IPv6
+Proxy status：DNS only / 灰云
+```
+
+这样：
+
+```text
+https://notoai.cn      走 Cloudflare Tunnel，IPv4/IPv6 都可访问
+http://v6.notoai.cn    走家庭 IPv6 直连备用
+```
+
+#### 7.4.6 验证访问
+
+刷新 Windows DNS 缓存：
+
+```cmd
+ipconfig /flushdns
+```
+
+检查 NS：
+
+```cmd
+nslookup -type=NS notoai.cn
+```
+
+浏览器访问：
+
+```text
+https://notoai.cn/api/v1/health
+https://notoai.cn
+```
+
+如果 Windows 命令行 `curl` 报证书吊销检查超时，优先用浏览器验证；也可以换手机 4G/5G 测试。
+
+#### 7.4.7 常见问题
+
+如果 Cloudflare 添加 Public Hostname 时 `Domain` 下拉里没有 `notoai.cn`，说明域名还没有成功接入 Cloudflare，需要先等待站点状态变成 `Active`。
+
+如果 Tunnel 状态不是 `Healthy`，查看飞牛日志：
+
+```bash
+sudo docker logs --tail=100 cloudflared
+```
+
+如果 `https://notoai.cn` 返回 502，优先检查 Public Hostname 的 Service URL：
+
+```text
+http://127.0.0.1:80
+http://[::1]:80
+```
+
+如果 `nslookup -type=NS notoai.cn 223.5.5.5` 仍返回阿里云 NS，而 `1.1.1.1` 或 `8.8.8.8` 已返回 Cloudflare NS，说明 DNS 正在传播，继续等待即可。
 
 ## 8. Docker Compose 基础理解
 

@@ -128,6 +128,17 @@ http://notoai.cn:18080
 
 这种方式不接管飞牛系统 Nginx，飞牛后台继续使用局域网地址 `http://飞牛局域网IP:5666`。
 
+如果需要让没有 IPv6 的网络也能访问，推荐在飞牛上运行 Cloudflare Tunnel：
+
+```text
+https://notoai.cn
+    -> Cloudflare
+    -> cloudflared
+    -> 飞牛本地 Noto
+```
+
+该方案不要求家庭宽带具备公网 IPv4，详细步骤见 [FNOS_DOCKER_OPS.md](./FNOS_DOCKER_OPS.md) 的 Cloudflare Tunnel 章节。
+
 前置检查：
 
 ```bash
