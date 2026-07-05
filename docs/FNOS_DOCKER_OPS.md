@@ -198,18 +198,20 @@ NOTO_JWT_SECRET=至少32位随机字符串
 NOTO_DEMO_ENABLED=false
 ```
 
-飞牛直连 IPv6 高端口方式还需要设置：
+飞牛直连或 Cloudflare Tunnel 方式可按需设置前端监听地址：
 
 ```env
-FRONTEND_HOST=[::]
-FRONTEND_PORT=18080
 BACKEND_PORT=19086
+FRONTEND_IPV4_HOST=0.0.0.0
+FRONTEND_IPV6_HOST=[::]
+FRONTEND_PORT=80
 ```
 
 说明：
 
-- `FRONTEND_HOST=[::]` 让前端容器监听 IPv6。
-- `FRONTEND_PORT=18080` 避开飞牛系统 Nginx 已占用的 `80/443`。
+- `FRONTEND_IPV4_HOST=0.0.0.0` 让局域网 IPv4 可访问，例如 `http://飞牛局域网IP`。
+- `FRONTEND_IPV6_HOST=[::]` 让公网 IPv6 可访问，例如 `http://v6.notoai.cn`。
+- `FRONTEND_PORT=80` 让 HTTP 访问不需要填写端口号。
 - `BACKEND_PORT=19086` 只绑定本机，避免与已有 `9086` 服务冲突。
 
 生成 JWT 密钥：
@@ -345,7 +347,7 @@ ping -6 notoai.cn
 `.env`：
 
 ```env
-FRONTEND_HOST=[::]
+FRONTEND_IPV6_HOST=[::]
 FRONTEND_PORT=18080
 ```
 
@@ -583,7 +585,8 @@ Service URL：http://[::1]:80
 当前项目若使用飞牛直连端口 80，应在 `.env` 中设置：
 
 ```env
-FRONTEND_HOST=[::]
+FRONTEND_IPV4_HOST=0.0.0.0
+FRONTEND_IPV6_HOST=[::]
 FRONTEND_PORT=80
 ```
 
@@ -692,7 +695,7 @@ docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d --b
 | 参数 | 说明 |
 |------|------|
 | `docker-compose.yml` | 定义数据库、后端、MinIO、前端怎么构建和连接 |
-| `deploy/docker-compose.prod.yml` | 生产覆盖：隐藏 db/minio 端口；前端默认绑定到 `127.0.0.1:8080`，也可通过 `FRONTEND_HOST/FRONTEND_PORT` 改为 IPv6 高端口；后端只绑定到本机端口 |
+| `deploy/docker-compose.prod.yml` | 生产覆盖：隐藏 db/minio 端口；前端默认绑定到 `127.0.0.1:8080` 与 `[::1]:8080`，也可通过 `FRONTEND_IPV4_HOST/FRONTEND_IPV6_HOST/FRONTEND_PORT` 改为公网或局域网入口；后端只绑定到本机端口 |
 | `up -d` | 后台启动 |
 | `--build` | 启动前重新构建前后端镜像 |
 
@@ -833,11 +836,12 @@ FRONTEND_PORT=8080
 
 前端容器通过 Docker 内网访问后端，公网入口只需要反向代理到 `FRONTEND_PORT`。
 
-如果不用反向代理、直接通过 IPv6 高端口访问：
+如果不用反向代理、直接通过双栈 80 端口访问：
 
 ```env
-FRONTEND_HOST=[::]
-FRONTEND_PORT=18080
+FRONTEND_IPV4_HOST=0.0.0.0
+FRONTEND_IPV6_HOST=[::]
+FRONTEND_PORT=80
 ```
 
 ### 11.4 Maven 下载依赖超时
@@ -910,7 +914,7 @@ sudo ./deploy/prod-up.sh
 依次检查：
 
 1. `AAAA` 是否指向飞牛公网 IPv6。
-2. 使用 `http://notoai.cn:18080` 时，路由器 IPv6 防火墙是否放行 `18080/tcp`。
+2. 使用直连入口时，路由器 IPv6 防火墙是否放行对应端口，例如 `80/tcp` 或 `18080/tcp`。
 3. 使用 `https://notoai.cn` 时，路由器 IPv6 防火墙是否放行 `80/443`。
 4. 飞牛防火墙是否放行对应端口。
 5. 反代目标是否为 `http://127.0.0.1:8080`。
@@ -921,8 +925,8 @@ sudo ./deploy/prod-up.sh
 - [ ] `./deploy/prod-check.sh --strict` 通过。
 - [ ] `docker ps --filter name=noto-` 中 4 个容器都在运行。
 - [ ] 默认反代模式：`curl http://127.0.0.1:8080/api/v1/health` 返回 `code:0`。
-- [ ] IPv6 高端口模式：`curl -g -6 "http://[::1]:18080/api/v1/health"` 返回 `code:0`。
-- [ ] 手机 4G/5G 访问 `http://notoai.cn:18080/api/v1/health` 返回 `code:0`，或正式 HTTPS 模式下 `https://notoai.cn/api/v1/health` 返回 `code:0`。
+- [ ] 双栈直连模式：`curl http://127.0.0.1/api/v1/health` 与 `curl -g -6 "http://[::1]/api/v1/health"` 返回 `code:0`。
+- [ ] Cloudflare Tunnel 模式：`https://notoai.cn/api/v1/health` 返回 `code:0`。
 - [ ] `NOTO_DEMO_ENABLED=false`。
 - [ ] PostgreSQL、MinIO、后端端口未暴露公网。
 - [ ] 已配置数据库定时备份。

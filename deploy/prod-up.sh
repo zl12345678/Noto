@@ -30,12 +30,14 @@ chmod 644 建表SQL.sql 2>/dev/null || true
 echo "Waiting for health..."
 if [[ -f .env ]]; then
   FRONTEND_HOST="${FRONTEND_HOST:-$(sed -n 's/^FRONTEND_HOST=//p' .env | tail -n 1)}"
+  FRONTEND_IPV4_HOST="${FRONTEND_IPV4_HOST:-$(sed -n 's/^FRONTEND_IPV4_HOST=//p' .env | tail -n 1)}"
+  FRONTEND_IPV6_HOST="${FRONTEND_IPV6_HOST:-$(sed -n 's/^FRONTEND_IPV6_HOST=//p' .env | tail -n 1)}"
   FRONTEND_PORT="${FRONTEND_PORT:-$(sed -n 's/^FRONTEND_PORT=//p' .env | tail -n 1)}"
 fi
 FRONTEND_PORT="${FRONTEND_PORT:-8080}"
 FRONTEND_HEALTH_HOST="127.0.0.1"
-case "${FRONTEND_HOST:-127.0.0.1}" in
-  "::" | "[::]")
+case "${FRONTEND_IPV4_HOST:-${FRONTEND_HOST:-127.0.0.1}}" in
+  "" | "::" | "[::]")
     FRONTEND_HEALTH_HOST="[::1]"
     ;;
 esac
@@ -57,7 +59,7 @@ docker ps --filter name=noto- --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}
 cat <<'EOF'
 
 ========== Production stack ==========
-  Health: see FRONTEND_HOST/FRONTEND_PORT in .env
+  Health: see FRONTEND_IPV4_HOST/FRONTEND_IPV6_HOST/FRONTEND_PORT in .env
 
 Next steps:
   1. sudo cp deploy/nginx/noto.conf /etc/nginx/sites-available/noto

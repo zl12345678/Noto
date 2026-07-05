@@ -111,22 +111,24 @@ openssl rand -base64 48
 
 适用：闲置笔记本已安装 Ubuntu Server，IPv6 已开启，能 SSH，Docker 已安装，域名申请中。
 
-飞牛 OS 的实际操作、Docker 国内镜像源、IPv6 高端口直连、Lucky / Nginx Proxy Manager 反代、更新和备份见 [FNOS_DOCKER_OPS.md](./FNOS_DOCKER_OPS.md)。
+飞牛 OS 的实际操作、Docker 国内镜像源、IPv4/IPv6 双栈直连、Cloudflare Tunnel、Lucky / Nginx Proxy Manager 反代、更新和备份见 [FNOS_DOCKER_OPS.md](./FNOS_DOCKER_OPS.md)。
 
-当前飞牛直连 IPv6 高端口方案：
+当前飞牛双栈直连端口 80 方案：
 
 ```env
-FRONTEND_HOST=[::]
-FRONTEND_PORT=18080
+FRONTEND_IPV4_HOST=0.0.0.0
+FRONTEND_IPV6_HOST=[::]
+FRONTEND_PORT=80
 ```
 
 访问：
 
 ```text
-http://notoai.cn:18080
+http://飞牛局域网IP
+http://v6.notoai.cn
 ```
 
-这种方式不接管飞牛系统 Nginx，飞牛后台继续使用局域网地址 `http://飞牛局域网IP:5666`。
+这种方式不接管飞牛系统 Nginx，飞牛后台继续使用局域网地址 `http://飞牛局域网IP:5666`。如果需要 IPv4 公网访问，推荐叠加 Cloudflare Tunnel。
 
 如果需要让没有 IPv6 的网络也能访问，推荐在飞牛上运行 Cloudflare Tunnel：
 
