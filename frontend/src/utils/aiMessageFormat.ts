@@ -274,9 +274,11 @@ export function buildAgentResultBlocks(steps?: AiAgentStep[]): AgentResultBlock[
 
 export function extractIntroText(content: string, hasStructuredBlocks: boolean): string {
   if (!content?.trim()) return '';
-  if (!hasStructuredBlocks) return content.trim();
+  const visibleContent = stripInternalContextBlocks(content);
+  if (!visibleContent.trim()) return '';
+  if (!hasStructuredBlocks) return visibleContent.trim();
 
-  const lines = content.split('\n');
+  const lines = visibleContent.split('\n');
   const intro: string[] = [];
 
   for (const line of lines) {
@@ -298,7 +300,7 @@ export function extractIntroText(content: string, hasStructuredBlocks: boolean):
 export function normalizeAiMarkdown(text: string): string {
   if (!text?.trim()) return '';
 
-  let result = text.replace(/\r\n/g, '\n');
+  let result = stripInternalContextBlocks(text).replace(/\r\n/g, '\n');
 
   result = result.replace(/^【(.+?)】(.*)$/gm, (_, name, suffix) => {
     const extra = String(suffix || '').trim();
@@ -310,6 +312,15 @@ export function normalizeAiMarkdown(text: string): string {
   result = result.replace(/^(知识库共[^：:\n]*)([：:])/gm, '**$1**$2');
 
   return result.trim();
+}
+
+function stripInternalContextBlocks(text: string): string {
+  return text
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .filter((line) => !line.trim().startsWith('PENDING_PLAN_JSON:'))
+    .join('\n')
+    .trim();
 }
 
 export function isReadOnlyListTask(steps?: AiAgentStep[]): boolean {

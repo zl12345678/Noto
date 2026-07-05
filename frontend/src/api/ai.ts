@@ -169,7 +169,7 @@ export function getAiObservabilitySummary() {
 }
 
 export interface AiRouteResult {
-  intent: 'chat' | 'agent';
+  intent: 'chat' | 'agent' | 'clarify';
   reason?: string;
   source?: 'llm' | 'rule';
 }

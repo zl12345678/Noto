@@ -9,6 +9,8 @@ import com.noto.zhihui.agent.AgentExecutionContext;
 import com.noto.zhihui.agent.AgentPlanner;
 import com.noto.zhihui.agent.AgentReplyComposer;
 import com.noto.zhihui.agent.AgentToolExecutor;
+import com.noto.zhihui.agent.plan.ConversationAgentState;
+import com.noto.zhihui.agent.plan.PendingPlanState;
 import com.noto.zhihui.common.constants.AiTaskStatus;
 import com.noto.zhihui.common.constants.AiTaskType;
 import com.noto.zhihui.common.exception.BizException;
@@ -147,7 +149,7 @@ public class AiAgentServiceImpl implements AiAgentService {
         long started = System.currentTimeMillis();
         try {
             AgentExecutionContext context = AgentExecutionContext.begin(
-                    userId, request.getWorkspaceId(), true
+                    userId, request.getWorkspaceId(), true, request.getInstruction().trim()
             );
             try {
                 AgentPlanner.AgentPlan plan = agentPlanner.plan(
@@ -174,6 +176,7 @@ public class AiAgentServiceImpl implements AiAgentService {
                                 .map(AiAgentStepVO::getId)
                                 .collect(java.util.stream.Collectors.toSet());
                         AiAgentTaskVO result = applyConfirmSteps(task, payload, approved, userId);
+                        persistAgentExchange(request, result.getAssistantReply(), userId);
                         auditLogService.logAiCall(
                                 userId,
                                 request.getWorkspaceId(),
@@ -201,7 +204,9 @@ public class AiAgentServiceImpl implements AiAgentService {
                                 "durationMs", System.currentTimeMillis() - started
                         )
                 );
-                return toVO(task, payload);
+                AiAgentTaskVO result = toVO(task, payload);
+                persistAgentExchange(request, result.getAssistantReply(), userId);
+                return result;
             } finally {
                 AgentExecutionContext.clear();
             }
@@ -940,6 +945,9 @@ public class AiAgentServiceImpl implements AiAgentService {
         payload.setInstruction(instruction);
         payload.setAssistantReply(AgentReplyComposer.compose(reply, steps, objectMapper));
         payload.setSteps(steps == null ? List.of() : new ArrayList<>(steps));
+        PendingPlanState pendingPlan = PendingPlanState.fromSteps(null, payload.getSteps());
+        payload.setPendingPlan(pendingPlan);
+        payload.setAgentState(ConversationAgentState.fromPendingPlan(pendingPlan));
         return payload;
     }
 
@@ -980,6 +988,8 @@ public class AiAgentServiceImpl implements AiAgentService {
         vo.setInstruction(payload.getInstruction() != null ? payload.getInstruction() : entity.getInputContent());
         vo.setAssistantReply(payload.getAssistantReply());
         vo.setSteps(payload.getSteps());
+        vo.setPendingPlan(payload.getPendingPlan());
+        vo.setAgentState(payload.getAgentState());
         vo.setAutoExecuted(payload.getAutoExecuted());
         vo.setErrorMessage(entity.getErrorMessage());
         vo.setCreatedAt(entity.getCreatedAt());
@@ -1004,6 +1014,24 @@ public class AiAgentServiceImpl implements AiAgentService {
         return AiConversationContext.resolveContextBlock(request.getRecentContext(), sessionBlock);
     }
 
+    private void persistAgentExchange(AiAgentPlanRequest request, String assistantReply, Long userId) {
+        if (request.getSessionId() == null) {
+            return;
+        }
+        try {
+            aiChatSessionService.saveExchange(
+                    request.getSessionId(),
+                    userId,
+                    request.getInstruction(),
+                    assistantReply,
+                    List.of(),
+                    "agent"
+            );
+        } catch (Exception ignored) {
+            // 会话持久化失败不影响 Agent 任务本身
+        }
+    }
+
     private String preview(String text) {
         if (!StringUtils.hasText(text)) {
             return "";
@@ -1023,6 +1051,8 @@ public class AiAgentServiceImpl implements AiAgentService {
         private String instruction;
         private String assistantReply;
         private List<AiAgentStepVO> steps;
+        private PendingPlanState pendingPlan;
+        private ConversationAgentState agentState;
         private Boolean autoExecuted;
 
         public String getInstruction() {
@@ -1047,6 +1077,22 @@ public class AiAgentServiceImpl implements AiAgentService {
 
         public void setSteps(List<AiAgentStepVO> steps) {
             this.steps = steps;
+        }
+
+        public PendingPlanState getPendingPlan() {
+            return pendingPlan;
+        }
+
+        public void setPendingPlan(PendingPlanState pendingPlan) {
+            this.pendingPlan = pendingPlan;
+        }
+
+        public ConversationAgentState getAgentState() {
+            return agentState;
+        }
+
+        public void setAgentState(ConversationAgentState agentState) {
+            this.agentState = agentState;
         }
 
         public Boolean getAutoExecuted() {

@@ -1,6 +1,6 @@
 import { routeAiIntent, type AiRouteResult } from '../api/ai';
 
-export type AiIntent = 'chat' | 'agent';
+export type AiIntent = 'chat' | 'agent' | 'clarify';
 
 export type { AiRouteResult };
 
@@ -36,6 +36,10 @@ const CHAT_SIGNALS: RegExp[] = [
 const HOW_TO_QUESTION = /^(?:怎么|如何|怎样).{0,12}(?:创建|新建|设置|提取|使用|操作|做)/;
 
 const FOLLOW_UP = /^(?:那|然后|接着|继续|还有|再说|详细|展开|为什么|什么意思)/;
+const PENDING_PLAN_EDIT = /(?:改|修改|换|调整|推迟|提前|延迟|延后|挪|改成|换成).{0,16}(?:时间|日期|明天|后天|今天|今晚|下周|周[一二三四五六日天]|点|上午|下午|晚上|标题|内容|提醒|待办|一周|[一二三四五六七八九十\d]+天)|(?:提醒|待办).{0,8}(?:推迟|提前|延迟|延后|往后|往前|挪).{0,8}(?:一周|[一二三四五六七八九十\d]+天)/;
+const PENDING_PLAN_TARGETED_SHIFT = /(?:提醒|待办).{0,8}(?:延迟|延后|推迟|往后|提前|往前|挪).{0,8}(?:一周|[一二三四五六七八九十\d]+天)/;
+const PENDING_PLAN_AMBIGUOUS_SHIFT = /^(?:延迟|延后|推迟|往后|提前|往前|挪).{0,8}(?:一周|[一二三四五六七八九十\d]+天)$/;
+const VAGUE_CONTEXT_REPLY = /^(?:改一下|修改一下|换一下|调整一下|改改|不对|不是|重新|算了|那个|这个|就这个|就这样|可以|好|行|嗯|对)$/;
 
 function detectWithContextFallback(text: string, recentContext?: string): AiIntent {
   const input = text.trim();
@@ -43,6 +47,10 @@ function detectWithContextFallback(text: string, recentContext?: string): AiInte
 
   if (HOW_TO_QUESTION.test(input)) return 'chat';
   if (CATALOG_QUESTION.test(input)) return 'agent';
+  const hasPendingPlan = Boolean(recentContext?.includes('待确认方案') || recentContext?.includes('PENDING_PLAN_JSON:'));
+  if (hasPendingPlan && PENDING_PLAN_TARGETED_SHIFT.test(input)) return 'agent';
+  if (hasPendingPlan && PENDING_PLAN_AMBIGUOUS_SHIFT.test(input)) return 'clarify';
+  if (hasPendingPlan && PENDING_PLAN_EDIT.test(input)) return 'agent';
 
   const actionScore = ACTION_SIGNALS.reduce((n, re) => n + (re.test(input) ? 1 : 0), 0);
   const chatScore = CHAT_SIGNALS.reduce((n, re) => n + (re.test(input) ? 1 : 0), 0);
@@ -62,6 +70,10 @@ function detectWithContextFallback(text: string, recentContext?: string): AiInte
     if (lastUser && ACTION_SIGNALS.some((re) => re.test(lastUser)) && /(?:好|行|可以|那就|帮我|创建|提取|提醒)/.test(input)) {
       return 'agent';
     }
+  }
+
+  if (recentContext?.trim() && input.length <= 12 && VAGUE_CONTEXT_REPLY.test(input)) {
+    return 'clarify';
   }
 
   if (/(?:创建|新建|提取|提醒|待办|整理|写入|安排)/.test(input)) return 'agent';
@@ -92,7 +104,7 @@ export async function resolveAiIntent(
       sessionId: options?.sessionId,
       recentContext,
     });
-    if (result?.intent === 'chat' || result?.intent === 'agent') {
+    if (result?.intent === 'chat' || result?.intent === 'agent' || result?.intent === 'clarify') {
       return result;
     }
   } catch {
@@ -106,5 +118,6 @@ export async function resolveAiIntent(
 }
 
 export function intentLabel(intent: AiIntent): string {
+  if (intent === 'clarify') return '澄清';
   return intent === 'agent' ? '操控' : '阅读';
 }

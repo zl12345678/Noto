@@ -16,19 +16,25 @@ public final class AgentExecutionContext {
     private final Long userId;
     private final Long workspaceId;
     private final boolean dryRun;
+    private final String instruction;
     private final List<AiAgentStepVO> steps = new ArrayList<>();
     private final AtomicInteger stepSeq = new AtomicInteger();
     private Long lastNoteId;
     private Long lastTodoId;
 
-    private AgentExecutionContext(Long userId, Long workspaceId, boolean dryRun) {
+    private AgentExecutionContext(Long userId, Long workspaceId, boolean dryRun, String instruction) {
         this.userId = userId;
         this.workspaceId = workspaceId;
         this.dryRun = dryRun;
+        this.instruction = instruction;
     }
 
     public static AgentExecutionContext begin(Long userId, Long workspaceId, boolean dryRun) {
-        AgentExecutionContext context = new AgentExecutionContext(userId, workspaceId, dryRun);
+        return begin(userId, workspaceId, dryRun, "");
+    }
+
+    public static AgentExecutionContext begin(Long userId, Long workspaceId, boolean dryRun, String instruction) {
+        AgentExecutionContext context = new AgentExecutionContext(userId, workspaceId, dryRun, instruction);
         HOLDER.set(context);
         return context;
     }

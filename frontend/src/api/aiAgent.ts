@@ -11,6 +11,24 @@ export interface AiAgentStep {
   result?: Record<string, unknown>;
 }
 
+export interface PendingPlanStep {
+  stepId: string;
+  tool: string;
+  args: Record<string, unknown>;
+  status: string;
+}
+
+export interface PendingPlanState {
+  planId: string;
+  status: string;
+  steps: PendingPlanStep[];
+}
+
+export interface ConversationAgentState {
+  status: 'idle' | 'planning' | 'pending_confirm' | 'patching_pending_plan' | 'clarifying' | 'executing' | 'done' | string;
+  activePlanId?: string;
+}
+
 export interface AiAgentTask {
   id: string;
   workspaceId: string;
@@ -19,6 +37,8 @@ export interface AiAgentTask {
   instruction?: string;
   assistantReply?: string;
   steps?: AiAgentStep[];
+  pendingPlan?: PendingPlanState;
+  agentState?: ConversationAgentState;
   autoExecuted?: boolean;
   errorMessage?: string;
   createdAt?: string;

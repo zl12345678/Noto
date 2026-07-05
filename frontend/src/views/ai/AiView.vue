@@ -671,7 +671,8 @@ const submitInput = async (text: string, options?: { forceIntent?: 'chat' | 'age
     await ensureSession(text);
     const recentContext = buildRecentContextBlock(priorMessagesForContext(aiChat.messages));
 
-    let intent: 'chat' | 'agent';
+    let intent: 'chat' | 'agent' | 'clarify';
+    let routeReason = '';
     if (options?.forceIntent) {
       intent = options.forceIntent;
     } else if (inputMode.value === 'chat' || inputMode.value === 'agent') {
@@ -682,11 +683,22 @@ const submitInput = async (text: string, options?: { forceIntent?: 'chat' | 'age
         recentContext,
       });
       intent = routed.intent;
+      routeReason = routed.reason || '';
     }
 
     const userMsg = aiChat.messages[aiChat.messages.length - 1];
     if (userMsg?.role === 'user') {
       userMsg.intent = intent;
+    }
+
+    if (intent === 'clarify') {
+      aiChat.messages.push({
+        role: 'assistant',
+        content: routeReason || '我不太确定你想改哪一部分。你是要修改刚才的待办/提醒方案，还是重新创建一个？如果是改方案，可以直接说“改成下周三上午10点”或“标题改成交周报”。',
+        kind: 'text',
+        intent: 'clarify',
+      });
+      return;
     }
 
     if (intent === 'agent') {

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Noto AI 面试速查图</title>
+  <link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">Reference 0001</p>
+    <h1>Noto AI 面试速查图</h1>
+    <p>目标：把项目讲成“私有知识到行动”的 AI 工程闭环，而不是普通聊天框。</p>
+  </header>
+
+  <h2>一句话定位</h2>
+  <p><strong>Noto 是一个 AI 知识工作台：</strong>用 RAG 理解私人笔记，用可确认 Agent 把知识转成待办、提醒和复盘。</p>
+
+  <h2>核心链路</h2>
+  <table>
+    <thead>
+    <tr><th>能力</th><th>你怎么讲</th><th>代码入口</th></tr>
+    </thead>
+    <tbody>
+    <tr>
+      <td>模型接入</td>
+      <td>通过 LangChain4j 的 DashScope Qwen chat、streaming chat、embedding model 接入通义千问。</td>
+      <td><code>LangChain4jAiConfiguration</code></td>
+    </tr>
+    <tr>
+      <td>RAG 索引</td>
+      <td>保存或手动重建时，将笔记分块，调用 embedding，保存 JSON 向量，并在 pgvector 可用时写入 <code>vector(1024)</code> 列。</td>
+      <td><code>NoteRagIndexServiceImpl</code></td>
+    </tr>
+    <tr>
+      <td>RAG 检索</td>
+      <td>问题先转 embedding，用 pgvector cosine 搜索；不可用时内存 cosine 扫描；再混合关键词提升和去重。</td>
+      <td><code>NoteRagSearchServiceImpl</code>, <code>NoteRetrievalService</code></td>
+    </tr>
+    <tr>
+      <td>回答生成</td>
+      <td>把检索片段、引用、对话上下文和用户偏好拼进 prompt；资料不足时输出 knowledge gaps。</td>
+      <td><code>AiServiceImpl.buildAskContext</code></td>
+    </tr>
+    <tr>
+      <td>SSE 流式</td>
+      <td>先发 references，再逐 token 发送回答，完成后保存会话和审计。</td>
+      <td><code>AiController.askStream</code>, <code>AiServiceImpl.askStream</code></td>
+    </tr>
+    <tr>
+      <td>可确认 Agent</td>
+      <td>LLM 只负责规划工具调用；读操作直接执行，写操作生成 pending_confirm，用户确认后才写库。</td>
+      <td><code>AgentPlanner</code>, <code>AiAgentServiceImpl</code></td>
+    </tr>
+    </tbody>
+  </table>
+
+  <h2>高频追问</h2>
+  <div class="grid">
+    <section class="card">
+      <h3>如何减少幻觉？</h3>
+      <p>用私有笔记检索作为上下文，回答返回引用；资料不足时明确说缺信息，并给出知识缺口。</p>
+    </section>
+    <section class="card">
+      <h3>AI 不可用怎么办？</h3>
+      <p><code>noto.ai.enabled=false</code> 时加载 disabled service，主业务还能跑；部分待办提取还有 Markdown 规则兜底。</p>
+    </section>
+    <section class="card">
+      <h3>为什么写操作要确认？</h3>
+      <p>笔记、待办、提醒属于用户数据。Agent 可以规划和预览，但创建、更新、删除必须进入确认链。</p>
+    </section>
+    <section class="card">
+      <h3>为什么用 pgvector？</h3>
+      <p>数据已经在 PostgreSQL 中，pgvector 让向量检索和业务数据权限过滤在同一数据库内完成；HNSW 提升近似检索速度。</p>
+    </section>
+  </div>
+
+  <h2>可信资料</h2>
+  <p>优先回看项目文档 <a href="../docs/AI_SHOWCASE.md">AI_SHOWCASE.md</a> 和代码。外部资料可查 <a href="https://github.com/langchain4j/langchain4j/blob/main/docs/docs/integrations/language-models/dashscope.md">LangChain4j DashScope</a>、<a href="https://www.alibabacloud.com/help/en/model-studio/text-embedding-synchronous-api">DashScope embedding</a>、<a href="https://github.com/pgvector/pgvector/blob/master/README.md">pgvector README</a>。</p>
+</main>
+</body>
+</html>

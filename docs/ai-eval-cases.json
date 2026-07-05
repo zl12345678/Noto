@@ -90,5 +90,75 @@
       "backend/src/main/java/com/noto/zhihui/service/impl/AiServiceImpl.java"
     ],
     "risk": "只展示单点功能，没有讲出产品闭环"
+  },
+  {
+    "id": "agent-plan-patch-006",
+    "category": "agent_plan_patch",
+    "question": "多轮对话：先说「设置待办和提醒。周一改简历，加入 Noto 项目。」再说「提醒延迟一周」。系统应该如何理解？",
+    "expectedAnswerPoints": [
+      "第二句话是在修改上一轮待确认方案",
+      "目标是 createReminder",
+      "只修改 triggerAt",
+      "createTodo 的 dueAt 保持周一不变",
+      "重新生成待确认方案",
+      "用户确认前不写入数据库"
+    ],
+    "expectedEvidence": [
+      "backend/src/main/java/com/noto/zhihui/agent/plan/PlanPatchPlanner.java",
+      "backend/src/main/java/com/noto/zhihui/agent/AgentPlanner.java",
+      "frontend/src/utils/aiContext.ts"
+    ],
+    "risk": "把「提醒延迟一周」误判成普通聊天，或同时误改待办截止时间"
+  },
+  {
+    "id": "agent-plan-patch-007",
+    "category": "agent_plan_patch",
+    "question": "多轮对话：已有待办和提醒的待确认方案，用户只说「延迟一周」。系统应该如何处理？",
+    "expectedAnswerPoints": [
+      "识别为上下文相关的方案修改",
+      "发现待办和提醒都可被延迟",
+      "目标不明确",
+      "返回澄清问题",
+      "不执行工具",
+      "不生成误导性新待办"
+    ],
+    "expectedEvidence": [
+      "backend/src/main/java/com/noto/zhihui/agent/AiIntentRouter.java",
+      "backend/src/main/java/com/noto/zhihui/agent/plan/PlanPatchPlanner.java"
+    ],
+    "risk": "在目标不明确时擅自修改提醒或待办"
+  },
+  {
+    "id": "agent-plan-patch-008",
+    "category": "agent_plan_patch",
+    "question": "多轮对话：已有待确认待办，用户说「标题改成完善 Noto 项目描述」。系统应该如何处理？",
+    "expectedAnswerPoints": [
+      "由 LLM 生成结构化 Plan Patch",
+      "type 为 modify_pending_plan",
+      "只修改 title 或 message 等明确字段",
+      "保留未修改字段",
+      "重新进入确认流程"
+    ],
+    "expectedEvidence": [
+      "backend/src/main/java/com/noto/zhihui/agent/plan/PlanPatchPlanner.java"
+    ],
+    "risk": "重新创建无关任务，或丢失原有 dueAt/triggerAt"
+  },
+  {
+    "id": "agent-plan-patch-009",
+    "category": "agent_plan_patch",
+    "question": "多轮对话：已有待办和提醒，用户说「全部延后一周」。系统后续应支持什么行为？",
+    "expectedAnswerPoints": [
+      "识别为批量修改 pending plan",
+      "同时修改 createTodo.dueAt 和 createReminder.triggerAt",
+      "保留标题和提醒内容",
+      "重新生成完整确认方案",
+      "用户确认后才执行"
+    ],
+    "expectedEvidence": [
+      "docs/superpowers/plans/2026-07-04-agent-plan-patch-state.md",
+      "backend/src/main/java/com/noto/zhihui/agent/plan/PlanPatchPlanner.java"
+    ],
+    "risk": "目前若未实现批量 patch，应作为未来回归用例防止误执行"
   }
 ]

@@ -20,6 +20,9 @@ public final class AiConversationContext {
     }
 
     public static String resolveContextBlock(String recentContext, String sessionBlock) {
+        if (StringUtils.hasText(recentContext) && StringUtils.hasText(sessionBlock)) {
+            return trimToMax(mergeDialogBlocks(recentContext.trim(), sessionBlock.trim()), MAX_CONTEXT_CHARS);
+        }
         if (StringUtils.hasText(recentContext)) {
             return trimToMax(recentContext.trim(), MAX_CONTEXT_CHARS);
         }
@@ -27,6 +30,30 @@ public final class AiConversationContext {
             return trimToMax(sessionBlock.trim(), MAX_CONTEXT_CHARS);
         }
         return "";
+    }
+
+    private static String mergeDialogBlocks(String recentContext, String sessionBlock) {
+        StringBuilder builder = new StringBuilder();
+        appendUniqueLines(builder, sessionBlock);
+        appendUniqueLines(builder, recentContext);
+        return builder.toString();
+    }
+
+    private static void appendUniqueLines(StringBuilder builder, String block) {
+        for (String rawLine : block.split("\\R")) {
+            String line = rawLine.trim();
+            if (!StringUtils.hasText(line)) {
+                continue;
+            }
+            String existing = builder.toString();
+            if (existing.contains(line)) {
+                continue;
+            }
+            if (!builder.isEmpty()) {
+                builder.append('\n');
+            }
+            builder.append(line);
+        }
     }
 
     public static String formatDialogBlock(List<AiChatMessageVO> messages) {

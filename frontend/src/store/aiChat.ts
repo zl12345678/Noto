@@ -8,7 +8,7 @@ export type AiChatMessage = {
   role: 'user' | 'assistant';
   content: string;
   kind?: 'text' | 'agent';
-  intent?: 'chat' | 'agent';
+  intent?: 'chat' | 'agent' | 'clarify';
   references?: AiReference[];
   knowledgeGaps?: string[];
   agentTask?: AiAgentTask;

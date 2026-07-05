@@ -48,6 +48,23 @@ public class AiIntentRouter {
             "^(?:那|然后|接着|继续|还有|再说|详细|展开|为什么|什么意思)"
     );
 
+    private static final Pattern PENDING_PLAN_EDIT = Pattern.compile(
+            "(?:改|修改|换|调整|推迟|提前|延迟|延后|挪|改成|换成).{0,16}(?:时间|日期|明天|后天|今天|今晚|下周|周[一二三四五六日天]|点|上午|下午|晚上|标题|内容|提醒|待办|一周|[一二三四五六七八九十\\d]+天)"
+                    + "|(?:提醒|待办).{0,8}(?:推迟|提前|延迟|延后|往后|往前|挪).{0,8}(?:一周|[一二三四五六七八九十\\d]+天)"
+    );
+
+    private static final Pattern PENDING_PLAN_TARGETED_SHIFT = Pattern.compile(
+            "(?:提醒|待办).{0,8}(?:延迟|延后|推迟|往后|提前|往前|挪).{0,8}(?:一周|[一二三四五六七八九十\\d]+天)"
+    );
+
+    private static final Pattern PENDING_PLAN_AMBIGUOUS_SHIFT = Pattern.compile(
+            "^(?:延迟|延后|推迟|往后|提前|往前|挪).{0,8}(?:一周|[一二三四五六七八九十\\d]+天)$"
+    );
+
+    private static final Pattern VAGUE_CONTEXT_REPLY = Pattern.compile(
+            "^(?:改一下|修改一下|换一下|调整一下|改改|不对|不是|重新|算了|那个|这个|就这个|就这样|可以|好|行|嗯|对)$"
+    );
+
     private final ObjectMapper objectMapper;
     private final NotoAiProperties aiProperties;
     private final ChatModel chatModel;
@@ -109,6 +126,7 @@ public class AiIntentRouter {
                 根据用户最新输入（结合对话历史）判断应走哪种模式：
                 - agent：查目录/列表、创建/修改/删除/完成 文档·待办·提醒，或任何需要操作系统数据的请求
                 - chat：仅当用户要阅读解释文档内容（总结、对比、为什么），且不需要改系统数据
+                - clarify：用户承接上下文，但只说「改一下」「那个」「不对」「就这样」等，无法判断是修改方案、重新创建还是继续问答
 
                 关键规则：
                 1. 「灵感有哪些文档」「列出待办」「完成 XX 待办」→ agent
@@ -116,10 +134,13 @@ public class AiIntentRouter {
                 3. 「怎么创建待办？」→ chat（问方法）
                 4. 「创建今晚8点的待办」→ agent
                 5. 对话中「那就帮我创建/完成/删除」→ agent
-                6. 不确定时：涉及列表或写操作 → agent；纯阅读理解 → chat
+                6. 对话中已经有「待确认方案」时，「改下时间」「换成明天上午」「推迟到下周一」「提醒延迟一周」→ agent
+                7. 对话中已经有待确认方案时，用户只说「延迟一周」但没说改提醒还是待办 → clarify
+                8. 有上下文但指代不清，且没有明确写操作/阅读意图 → clarify
+                9. 不确定时：涉及列表或写操作 → agent；纯阅读理解 → chat
 
                 %s仅输出 JSON，不要 markdown：
-                {"intent":"chat或agent","reason":"一句中文说明"}
+                {"intent":"chat或agent或clarify","reason":"一句中文说明"}
 
                 用户最新输入：
                 %s
@@ -141,6 +162,9 @@ public class AiIntentRouter {
             if ("agent".equalsIgnoreCase(intent)) {
                 return new AiRouteVO("agent", reasonOrDefault(reason, "执行办事流程"), "llm");
             }
+            if ("clarify".equalsIgnoreCase(intent)) {
+                return new AiRouteVO("clarify", reasonOrDefault(reason, "需要补充说明"), "llm");
+            }
         } catch (Exception ignored) {
             // fallback below
         }
@@ -156,6 +180,17 @@ public class AiIntentRouter {
 
         if (CATALOG_QUESTION.matcher(input).find()) {
             return new AiRouteVO("agent", "查询知识库目录或列表", "rule");
+        }
+        boolean hasPendingPlan = StringUtils.hasText(contextBlock)
+                && (contextBlock.contains("待确认方案") || contextBlock.contains("PENDING_PLAN_JSON:"));
+        if (hasPendingPlan && PENDING_PLAN_TARGETED_SHIFT.matcher(input).find()) {
+            return new AiRouteVO("agent", "修改待确认方案中的指定时间", "rule");
+        }
+        if (hasPendingPlan && PENDING_PLAN_AMBIGUOUS_SHIFT.matcher(input).find()) {
+            return new AiRouteVO("clarify", "你想把待办时间延迟，还是只把提醒时间延迟？", "rule");
+        }
+        if (hasPendingPlan && PENDING_PLAN_EDIT.matcher(input).find()) {
+            return new AiRouteVO("agent", "修改待确认方案", "rule");
         }
 
         boolean action = ACTION_SIGNAL.matcher(input).find();
@@ -182,6 +217,11 @@ public class AiIntentRouter {
                     && Pattern.compile("(?:好|行|可以|那就|帮我|创建|提取|提醒)").matcher(input).find()) {
                 return new AiRouteVO("agent", "承接上文执行意图", "rule");
             }
+        }
+        if (StringUtils.hasText(contextBlock)
+                && input.length() <= 12
+                && VAGUE_CONTEXT_REPLY.matcher(input).find()) {
+            return new AiRouteVO("clarify", "我不太确定你想继续哪件事：是修改刚才的待办/提醒方案，还是重新创建一个？", "rule");
         }
         if (Pattern.compile("(?:创建|新建|提取|提醒|待办|整理|写入|安排)").matcher(input).find()) {
             return new AiRouteVO("agent", "包含办事关键词", "rule");

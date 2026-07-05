@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Java 开发者 AI 术语速查</title>
+  <link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">Reference 0002</p>
+    <h1>Java 开发者 AI 术语速查</h1>
+    <p>这些词不用先学数学。先把它们当成后端工程里的组件、数据结构和调用链。</p>
+  </header>
+
+  <h2>基础调用</h2>
+  <table>
+    <thead>
+    <tr><th>术语</th><th>人话解释</th><th>Java 后端类比</th><th>Noto 代码</th></tr>
+    </thead>
+    <tbody>
+    <tr>
+      <td>LLM</td>
+      <td>大语言模型，接收文本，生成文本。</td>
+      <td>一个远程智能服务。</td>
+      <td><code>ChatModel</code>, <code>StreamingChatModel</code></td>
+    </tr>
+    <tr>
+      <td>Prompt</td>
+      <td>发给模型的完整指令，包括角色、规则、资料和用户问题。</td>
+      <td>请求 DTO + 业务规则 + SQL 条件的组合。</td>
+      <td><code>buildAskContext</code>, <code>buildTransformPrompt</code></td>
+    </tr>
+    <tr>
+      <td>Token</td>
+      <td>模型处理文本的最小片段，近似理解成“字/词片段”。</td>
+      <td>接口入参和返回内容的计费/长度单位。</td>
+      <td><code>sendToken</code></td>
+    </tr>
+    <tr>
+      <td>Streaming</td>
+      <td>模型边生成边返回，不等完整答案结束。</td>
+      <td>后端分块响应。</td>
+      <td><code>SseEmitter</code>, <code>askStream</code></td>
+    </tr>
+    </tbody>
+  </table>
+
+  <h2>RAG 检索</h2>
+  <table>
+    <thead>
+    <tr><th>术语</th><th>人话解释</th><th>Java 后端类比</th><th>Noto 代码</th></tr>
+    </thead>
+    <tbody>
+    <tr>
+      <td>Embedding</td>
+      <td>把文本变成一串数字，用来表示语义。</td>
+      <td>给文本生成“语义指纹”。</td>
+      <td><code>QwenEmbeddingModel</code></td>
+    </tr>
+    <tr>
+      <td>Vector</td>
+      <td>Embedding 生成的数字数组。</td>
+      <td><code>float[]</code> 特征字段。</td>
+      <td><code>embedding.vector()</code></td>
+    </tr>
+    <tr>
+      <td>Vector search</td>
+      <td>找语义最相似的文本片段。</td>
+      <td>不是 where title like，而是按相似度排序。</td>
+      <td><code>searchByVectorSimilarity</code></td>
+    </tr>
+    <tr>
+      <td>RAG</td>
+      <td>先检索资料，再把资料交给模型回答。</td>
+      <td>先查数据库，再组织业务响应。</td>
+      <td><code>NoteRetrievalService</code></td>
+    </tr>
+    <tr>
+      <td>pgvector</td>
+      <td>PostgreSQL 的向量检索扩展。</td>
+      <td>让数据库支持“按语义相似度 order by”。</td>
+      <td><code>PgVectorSupport</code></td>
+    </tr>
+    <tr>
+      <td>HNSW</td>
+      <td>一种加速向量近邻搜索的索引。</td>
+      <td>类似给查询建索引，不用每次全表扫。</td>
+      <td><code>idx_note_rag_chunk_embedding_hnsw</code></td>
+    </tr>
+    </tbody>
+  </table>
+
+  <h2>Agent 和工程守护</h2>
+  <table>
+    <thead>
+    <tr><th>术语</th><th>人话解释</th><th>Java 后端类比</th><th>Noto 代码</th></tr>
+    </thead>
+    <tbody>
+    <tr>
+      <td>Agent</td>
+      <td>让模型决定要调用哪些业务工具完成任务。</td>
+      <td>自然语言版的业务编排层。</td>
+      <td><code>AgentPlanner</code>, <code>AiAgentServiceImpl</code></td>
+    </tr>
+    <tr>
+      <td>Tool call</td>
+      <td>模型规划出的业务动作，比如搜索文档、创建待办。</td>
+      <td>调用一个 service 方法。</td>
+      <td><code>AgentToolExecutor</code></td>
+    </tr>
+    <tr>
+      <td>Confirmation</td>
+      <td>写操作先预览，用户确认后执行。</td>
+      <td>危险操作二次确认。</td>
+      <td><code>pending_confirm</code>, <code>confirm</code></td>
+    </tr>
+    <tr>
+      <td>Hallucination</td>
+      <td>模型编造不存在的信息。</td>
+      <td>远程服务返回了看似合理但不可信的数据。</td>
+      <td><code>KNOWLEDGE_GAPS</code>, references</td>
+    </tr>
+    <tr>
+      <td>Audit log</td>
+      <td>记录 AI 调用发生了什么、是否成功、耗时多少。</td>
+      <td>业务操作日志/接口调用日志。</td>
+      <td><code>recordAudit</code></td>
+    </tr>
+    </tbody>
+  </table>
+</main>
+</body>
+</html>

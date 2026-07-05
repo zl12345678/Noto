@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>第一课：Java 开发者讲清 Noto 的 AI 问答</title>
+  <link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">Lesson 0001 · AI 零基础版</p>
+    <h1>用 Java 后端思维讲清 Noto 的 AI 问答</h1>
+    <p>这节课假设你会 Spring Boot、Controller、Service、数据库和日志，但没做过 AI。学完后，你要能应对本项目 AI 问答追问，并知道如何自己开发一个小 AI 模块。</p>
+  </header>
+
+  <h2>先把 AI 当成一种后端能力</h2>
+  <div class="callout">
+    <p><strong>不要先把 AI 想复杂。</strong>在这个项目里，AI 模块本质上还是后端调用链：Controller 收请求，Service 组织上下文，调用外部模型服务，解析返回，写审计日志，再把结果给前端。</p>
+  </div>
+
+  <table>
+    <thead>
+    <tr><th>传统 Java 后端</th><th>Noto AI 后端</th></tr>
+    </thead>
+    <tbody>
+    <tr>
+      <td>查数据库后组装响应</td>
+      <td>先查笔记片段，再让模型基于片段回答</td>
+    </tr>
+    <tr>
+      <td>调用第三方 HTTP/RPC 服务</td>
+      <td>通过 LangChain4j 调用通义千问模型</td>
+    </tr>
+    <tr>
+      <td>SQL/条件构造影响查询结果</td>
+      <td>Prompt 构造影响模型回答质量</td>
+    </tr>
+    <tr>
+      <td>日志记录请求、耗时、错误</td>
+      <td>Audit log 记录 prompt 预览、模型、耗时、成功失败</td>
+    </tr>
+    </tbody>
+  </table>
+
+  <h2>必须先懂的 10 个词</h2>
+  <div class="grid">
+    <section class="card">
+      <h3>LLM</h3>
+      <p>大语言模型。你可以先理解成“输入文本、输出文本”的远程智能服务。Noto 用的是 DashScope 的 Qwen。</p>
+    </section>
+    <section class="card">
+      <h3>Prompt</h3>
+      <p>发给模型的完整指令，不只是用户问题，还包括角色、规则、检索资料、输出格式要求。</p>
+    </section>
+    <section class="card">
+      <h3>Token</h3>
+      <p>模型处理文本的单位，近似理解成字或词片段。流式回答时，前端一段段收到的就是 token 片段。</p>
+    </section>
+    <section class="card">
+      <h3>Embedding</h3>
+      <p>把一句话或一段文本变成一组数字，像给文本做“语义指纹”。</p>
+    </section>
+    <section class="card">
+      <h3>Vector</h3>
+      <p>Embedding 生成的数字数组。项目里是 <code>float[]</code>，会保存到 <code>note_rag_chunk</code>。</p>
+    </section>
+    <section class="card">
+      <h3>Vector Search</h3>
+      <p>按语义相似度找文本，不是简单 <code>like</code>。比如“上线注意事项”能找出“部署风险”。</p>
+    </section>
+    <section class="card">
+      <h3>RAG</h3>
+      <p>Retrieval-Augmented Generation：先检索资料，再让模型基于资料回答。它是减少胡编的核心手段。</p>
+    </section>
+    <section class="card">
+      <h3>SSE</h3>
+      <p>Server-Sent Events。后端不断向浏览器推送文本片段，所以用户看到答案逐字出现。</p>
+    </section>
+    <section class="card">
+      <h3>Agent</h3>
+      <p>让模型规划业务动作，比如“搜索文档 -> 提取待办 -> 创建提醒”。写操作需要用户确认。</p>
+    </section>
+    <section class="card">
+      <h3>Hallucination</h3>
+      <p>模型编造。Noto 用检索引用、知识缺口、确认链和审计来降低风险。</p>
+    </section>
+  </div>
+  <p>更多术语可复习：<a href="../reference/0002-ai-terms-for-java-developers.html">Java 开发者 AI 术语速查</a>。</p>
+
+  <h2>本项目 AI 问答做了什么</h2>
+  <p>用户问“这个知识库里关于项目部署有哪些注意事项？”时，Noto 不是直接把问题丢给模型。它做了这 6 步：</p>
+  <div class="flow" aria-label="RAG request flow">
+    <section class="step">
+      <strong>1. 接收请求</strong>
+      <p><code>AiController.askStream</code> 接收问题、workspaceId、scope、sessionId。</p>
+    </section>
+    <section class="step">
+      <strong>2. 补全上下文</strong>
+      <p><code>buildAskContext</code> 合并用户问题、会话历史和用户偏好。</p>
+    </section>
+    <section class="step">
+      <strong>3. 检索笔记</strong>
+      <p><code>NoteRetrievalService</code> 先向量检索，再用关键词检索补强。</p>
+    </section>
+    <section class="step">
+      <strong>4. 组装 Prompt</strong>
+      <p>把检索片段、回答规则、知识缺口指令和当前问题拼成完整 prompt。</p>
+    </section>
+    <section class="step">
+      <strong>5. 调模型</strong>
+      <p><code>StreamingChatModel</code> 调 Qwen，边生成边返回。</p>
+    </section>
+    <section class="step">
+      <strong>6. 返回与审计</strong>
+      <p>SSE 发 references/token/done，并记录 audit log 和会话消息。</p>
+    </section>
+  </div>
+
+  <h2>RAG 用 Java 话怎么理解</h2>
+  <p>RAG 可以理解成一个“先查库再调用模型”的后端模式。</p>
+  <pre><code>// 伪代码：不是项目原代码，但很像这个项目的结构
+public AiAnswer ask(String question, Long workspaceId, Long userId) {
+    List&lt;Chunk&gt; chunks = retrievalService.retrieveForQuestion(userId, workspaceId, question);
+    String prompt = promptBuilder.build(question, chunks);
+    String answer = chatModel.chat(prompt);
+    auditLogService.logAiCall(userId, workspaceId, prompt, answer);
+    return new AiAnswer(answer, toReferences(chunks));
+}</code></pre>
+  <p>所以你面试时不要只说“我接了大模型 API”。要说清楚：<strong>模型回答前，我先把用户私有知识查出来，作为证据交给模型。</strong></p>
+
+  <h2>索引链路：笔记怎样变成可检索资料</h2>
+  <p>RAG 查询能工作，前提是笔记已经提前处理过。这个处理过程叫索引。</p>
+  <table>
+    <thead>
+    <tr><th>步骤</th><th>人话</th><th>代码入口</th></tr>
+    </thead>
+    <tbody>
+    <tr>
+      <td>分块</td>
+      <td>把长笔记切成小段，避免一次塞太多内容给模型。</td>
+      <td><code>NoteChunkSplitter.split</code></td>
+    </tr>
+    <tr>
+      <td>生成 embedding</td>
+      <td>把每个文本片段转成数字向量。</td>
+      <td><code>embeddingModel.embedAll</code></td>
+    </tr>
+    <tr>
+      <td>保存 chunk</td>
+      <td>把文本片段、位置、模型名、向量写入表。</td>
+      <td><code>note_rag_chunkMapper.insert</code></td>
+    </tr>
+    <tr>
+      <td>写入 pgvector</td>
+      <td>如果数据库支持向量列，就额外写入 <code>embedding_vector</code>。</td>
+      <td><code>PgVectorSupport.storeEmbeddingVector</code></td>
+    </tr>
+    </tbody>
+  </table>
+
+  <h2>查询链路：问题怎样找到相关笔记</h2>
+  <p>用户的问题也会被转成向量，然后和笔记片段向量比较。相似度越高，越可能被放进 prompt。</p>
+  <pre><code>// NoteRagSearchServiceImpl 的核心思想
+Embedding queryEmbedding = embeddingModel.embed(question.trim()).content();
+float[] queryVector = queryEmbedding.vector();
+
+// pgvector 可用：交给数据库按 cosine similarity 查
+// pgvector 不可用：取出历史向量，在 Java 内存里算 cosine similarity</code></pre>
+  <p>项目里还有两个工程细节很值得讲：</p>
+  <table>
+    <thead>
+    <tr><th>细节</th><th>为什么重要</th></tr>
+    </thead>
+    <tbody>
+    <tr>
+      <td>关键词补强</td>
+      <td>Embedding 适合语义，但有时专有名词、标题关键词更准，所以项目把关键词结果合并进去。</td>
+    </tr>
+    <tr>
+      <td>Fallback</td>
+      <td>pgvector 不可用时不直接挂掉，而是退回 Java 内存 cosine 扫描，保证演示和开发环境可用。</td>
+    </tr>
+    </tbody>
+  </table>
+
+  <h2>如何自己开发一个小 AI 模块</h2>
+  <p>如果你要在这个项目里加一个“AI 生成笔记标题”模块，不要一上来做 Agent。按后端最小闭环做：</p>
+  <ol>
+    <li><strong>定接口：</strong>新增 <code>POST /api/v1/ai/notes/{id}/suggest-title</code>。</li>
+    <li><strong>拿数据：</strong>用 <code>noteService.requireOwnedNote</code> 读取当前用户的笔记。</li>
+    <li><strong>写 prompt：</strong>告诉模型只输出 JSON，例如 <code>{"title":"..."}</code>。</li>
+    <li><strong>调模型：</strong>复用 <code>ChatModel</code> 或 <code>AiServiceImpl.callModel</code> 的模式。</li>
+    <li><strong>解析结果：</strong>用 <code>ObjectMapper</code> 读 JSON，失败时给可控 fallback。</li>
+    <li><strong>写审计：</strong>记录 actionType，例如 <code>ai.suggest_title</code>。</li>
+    <li><strong>前端确认：</strong>只返回建议标题，不直接改笔记；用户点确认后再保存。</li>
+  </ol>
+  <p>你真正要掌握的是这个套路：<strong>业务数据 -> prompt -> 模型 -> 解析 -> fallback -> 审计 -> 用户确认。</strong></p>
+
+  <h2>面试回答模板</h2>
+  <p>如果面试官问“你这个 AI 问答怎么实现的”，你可以答：</p>
+  <pre><code>我把它当成一个后端检索增强问答链路来做，而不是直接调用聊天 API。
+用户提问后，Controller 进入 AiService，服务层会先根据 workspace 和 scope 检索用户自己的笔记。检索分两层：优先用 embedding + pgvector 做语义召回，pgvector 不可用时退回 Java 内存 cosine；同时合并关键词结果，避免专有名词漏召回。
+拿到片段后，我把片段、引用、会话历史、用户偏好和“资料不足不要编造”的规则拼成 prompt，再通过 LangChain4j 调 Qwen。流式接口用 SseEmitter 先返回 references，再逐 token 返回答案。
+最后会保存会话，并记录 AI 调用审计，包括模型、耗时、prompt 预览、响应长度和错误。这样面试里我可以讲清楚检索、生成、流式、引用和工程兜底，而不是只说接了大模型。</code></pre>
+
+  <h2>练习</h2>
+  <section class="practice" data-quiz data-answer="b" data-ok="对。Prompt 是完整指令，不只是用户输入。" data-bad="再想想：模型看到的不只是用户那句话。">
+    <h3>问题 1</h3>
+    <p>在这个项目里，prompt 最接近 Java 后端里的什么？</p>
+    <div class="choices">
+      <button data-choice="a">数据库主键</button>
+      <button data-choice="b">请求加规则</button>
+      <button data-choice="c">前端路由名</button>
+    </div>
+    <p class="feedback" aria-live="polite"></p>
+  </section>
+
+  <section class="practice" data-quiz data-answer="c" data-ok="对。RAG 的关键是先查资料，再基于资料回答。" data-bad="再想想：RAG 不是训练模型，也不是只做流式输出。">
+    <h3>问题 2</h3>
+    <p>RAG 最核心的工程动作是什么？</p>
+    <div class="choices">
+      <button data-choice="a">重新训练模型</button>
+      <button data-choice="b">美化聊天页面</button>
+      <button data-choice="c">先检索资料</button>
+    </div>
+    <p class="feedback" aria-live="polite"></p>
+  </section>
+
+  <section class="practice" data-quiz data-answer="a" data-ok="对。建议型 AI 功能最好先返回预览，用户确认后写入。" data-bad="再想想：AI 生成内容不应默认直接覆盖用户数据。">
+    <h3>问题 3</h3>
+    <p>如果你新增“AI 生成标题”，最安全的写法是什么？</p>
+    <div class="choices">
+      <button data-choice="a">先返回预览</button>
+      <button data-choice="b">直接覆盖标题</button>
+      <button data-choice="c">跳过权限校验</button>
+    </div>
+    <p class="feedback" aria-live="polite"></p>
+  </section>
+
+  <h2>下一步</h2>
+  <p>先复习两个速查表：<a href="../reference/0002-ai-terms-for-java-developers.html">Java 开发者 AI 术语速查</a> 和 <a href="../reference/0001-ai-interview-map.html">Noto AI 面试速查图</a>。下一课建议实战设计一个小模块：<strong>AI 生成笔记标题</strong>，用它练会 controller、service、prompt、解析、审计、确认这条最小闭环。</p>
+
+  <h2>推荐阅读</h2>
+  <p>先读项目自己的 <a href="../docs/AI_SHOWCASE.md">AI_SHOWCASE.md</a>，再对照 <a href="https://github.com/langchain4j/langchain4j/blob/main/docs/docs/integrations/language-models/dashscope.md">LangChain4j DashScope 文档</a>。外部文档只需要看“怎么创建模型并调用”，不要一开始陷进模型原理。</p>
+
+  <p class="small">卡住时可以直接问我：“用 Java 后端类比解释一下 embedding/RAG/Agent”。</p>
+</main>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

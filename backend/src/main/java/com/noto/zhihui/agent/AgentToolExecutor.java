@@ -23,14 +23,23 @@ import com.noto.zhihui.vo.todo.TodoVO;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.temporal.TemporalAdjusters;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Component
 public class AgentToolExecutor {
 
     private static final int STATUS_COMPLETED = 2;
+    private static final Pattern NEXT_WEEKDAY = Pattern.compile("下周([一二三四五六日天])");
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Shanghai");
 
     private final SearchService searchService;
     private final AiService aiService;
@@ -463,7 +472,7 @@ public class AgentToolExecutor {
         input.put("message", message);
         input.put("todoTitle", todoTitle);
 
-        var trigger = ExtractedTodoDueHelper.parseDueAt(triggerAt);
+        var trigger = normalizeRelativeWeekday(ctx, triggerAt);
         if (trigger == null) {
             String output = "提醒时间无效，请使用 ISO 本地时间，如 2026-06-09T20:00:00";
             ctx.recordStep("createReminder", input, output, false, null);
@@ -615,9 +624,44 @@ public class AgentToolExecutor {
         payload.put("horizon", horizon);
         payload.put("priority", 2);
         if (StringUtils.hasText(dueAt)) {
-            payload.put("dueAt", ExtractedTodoDueHelper.parseDueAt(dueAt) != null ? dueAt : null);
+            LocalDateTime parsed = normalizeRelativeWeekday(ctx, dueAt);
+            payload.put("dueAt", parsed != null ? parsed.toString() : null);
         }
         return payload;
+    }
+
+    private LocalDateTime normalizeRelativeWeekday(AgentExecutionContext ctx, String dateTimeText) {
+        LocalDateTime parsed = ExtractedTodoDueHelper.parseDueAt(dateTimeText);
+        if (parsed == null) {
+            return null;
+        }
+        String instruction = ctx.getInstruction();
+        if (!StringUtils.hasText(instruction)) {
+            return parsed;
+        }
+        Matcher matcher = NEXT_WEEKDAY.matcher(instruction);
+        if (!matcher.find()) {
+            return parsed;
+        }
+        DayOfWeek target = parseChineseWeekday(matcher.group(1));
+        if (target == null) {
+            return parsed;
+        }
+        LocalDate correctedDate = LocalDate.now(APP_ZONE).with(TemporalAdjusters.next(target));
+        return LocalDateTime.of(correctedDate, parsed.toLocalTime());
+    }
+
+    private DayOfWeek parseChineseWeekday(String text) {
+        return switch (text) {
+            case "一" -> DayOfWeek.MONDAY;
+            case "二" -> DayOfWeek.TUESDAY;
+            case "三" -> DayOfWeek.WEDNESDAY;
+            case "四" -> DayOfWeek.THURSDAY;
+            case "五" -> DayOfWeek.FRIDAY;
+            case "六" -> DayOfWeek.SATURDAY;
+            case "日", "天" -> DayOfWeek.SUNDAY;
+            default -> null;
+        };
     }
 
     private TodoCreateRequest buildTodoRequest(Map<String, Object> payload, Long workspaceId) {
