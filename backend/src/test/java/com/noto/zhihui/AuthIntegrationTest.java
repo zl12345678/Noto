@@ -50,6 +50,22 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void changePasswordShouldReportWrongCurrentPassword() throws Exception {
+        String token = registerAndGetToken();
+        Map<String, String> body = Map.of(
+                "oldPassword", "Wrong123456",
+                "newPassword", "NewPass123456"
+        );
+        mockMvc.perform(post("/api/v1/auth/change-password")
+                        .header("Authorization", authHeader(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(40020))
+                .andExpect(jsonPath("$.message").value("当前密码错误"));
+    }
+
+    @Test
     void forgotPasswordEndpointShouldBeRemoved() throws Exception {
         Map<String, String> body = Map.of(
                 "email", "unknown@example.com",

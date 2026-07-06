@@ -177,7 +177,7 @@ public class AuthController {
             throw new BizException(ErrorCode.UNAUTHORIZED);
         }
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
-            throw new BizException(ErrorCode.UNAUTHORIZED);
+            throw new BizException(ErrorCode.PASSWORD_INVALID);
         }
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userService.updateById(user);

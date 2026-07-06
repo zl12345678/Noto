@@ -11,6 +11,7 @@ public enum ErrorCode {
     EMAIL_EXISTS(40007, "邮箱已存在"),
     TAG_EXISTS(40008, "标签已存在"),
     TAG_NOT_FOUND(40009, "标签不存在"),
+    PASSWORD_INVALID(40020, "当前密码错误"),
     UNAUTHORIZED(40002, "未登录"),
     FORBIDDEN(40003, "无权限"),
     NOT_FOUND(40004, "资源不存在"),
