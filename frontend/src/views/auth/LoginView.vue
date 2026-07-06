@@ -44,7 +44,6 @@
               <a-checkbox v-model:checked="formState.rememberMe">记住密码</a-checkbox>
               <a-button type="link" style="padding: 0" @click="handleForgotPassword">忘记密码</a-button>
             </div>
-            <p class="auth-demo-hint">演示账号 demo，密码 123456</p>
             <a-button type="primary" html-type="submit" block size="large" :loading="loading">登录</a-button>
             <div class="auth-footer-link">
               还没有账号？<a @click="goRegister">注册</a>
@@ -93,16 +92,3 @@ const handleForgotPassword = () => {
   router.push('/forgot-password');
 };
 </script>
-
-<style scoped>
-.auth-demo-hint {
-  margin: -2px 0 14px;
-  padding: 8px 10px;
-  border: 1px solid rgba(22, 119, 255, 0.16);
-  border-radius: 8px;
-  background: rgba(22, 119, 255, 0.06);
-  color: #4b5563;
-  font-size: 13px;
-  line-height: 1.5;
-}
-</style>
