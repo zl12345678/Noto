@@ -693,6 +693,7 @@ import {
   cloneTreeSnapshot,
   resolveTreeMoveFromFinalTree,
   resolveTreeMoveFromTargetInfo,
+  resolveTreeReorderPatchesFromFinalTree,
   type HeTreeDropTargetInfo,
   type TreeNodeSnapshot,
 } from '../../utils/noteTreeDrag';
@@ -2390,7 +2391,14 @@ const onTreeChange = async (payload: {
     return;
   }
 
-  const move = resolveTreeMoveFromFinalTree(
+  const reorderPatches = resolveTreeReorderPatchesFromFinalTree(
+    displayTreeData.value as TreeNodeSnapshot[],
+    payload.dragKey,
+    folders.value,
+    notes.value,
+  );
+
+  const move = reorderPatches.length > 0 ? null : resolveTreeMoveFromFinalTree(
     displayTreeData.value as TreeNodeSnapshot[],
     payload.dragKey,
     folders.value,
@@ -2403,7 +2411,7 @@ const onTreeChange = async (payload: {
     notes.value,
   );
 
-  if (!move) {
+  if (reorderPatches.length === 0 && !move) {
     message.warning('无法移动到此位置');
     revertDisplayTree();
     treeDropInFlight.value = false;
@@ -2411,19 +2419,28 @@ const onTreeChange = async (payload: {
   }
 
   try {
-    if (move.type === 'folder') {
+    if (reorderPatches.length > 0) {
+      await Promise.all(reorderPatches.map((patch) => (
+        patch.type === 'folder'
+          ? patchFolderTree(patch.id, patch.payload)
+          : patchNoteTree(patch.id, patch.payload)
+      )));
+    } else if (move?.type === 'folder') {
       await patchFolderTree(dragNode.rawId, move.payload);
     } else {
-      await patchNoteTree(dragNode.rawId, move.payload);
+      await patchNoteTree(dragNode.rawId, move!.payload);
     }
     await Promise.all([loadFolders(), loadNotes()]);
-    if (move.type === 'folder' && move.payload.parentId) {
-      ensureExpanded(`folder-${move.payload.parentId}`);
-    } else if (move.type === 'note' && move.payload.folderId) {
-      ensureExpanded(`folder-${move.payload.folderId}`);
+    const movedPatch = reorderPatches.find((patch) => patch.id === dragNode.rawId);
+    const movedKind = movedPatch?.type ?? move?.type;
+    const expansionPayload = movedPatch?.payload ?? move?.payload;
+    if (movedKind === 'folder' && expansionPayload?.parentId) {
+      ensureExpanded(`folder-${expansionPayload.parentId}`);
+    } else if (movedKind === 'note' && expansionPayload && 'folderId' in expansionPayload && expansionPayload.folderId) {
+      ensureExpanded(`folder-${expansionPayload.folderId}`);
     }
-    if (move.type === 'note' && move.payload.parentId) {
-      ensureExpanded(`note-${move.payload.parentId}`);
+    if (movedKind === 'note' && expansionPayload?.parentId) {
+      ensureExpanded(`note-${expansionPayload.parentId}`);
     }
     message.success('已更新位置');
   } catch (error: any) {

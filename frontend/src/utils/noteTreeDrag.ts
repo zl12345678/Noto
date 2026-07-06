@@ -19,6 +19,10 @@ export type FolderTreeMovePayload = {
   sortOrder: number;
 };
 
+export type TreeReorderPatch =
+  | { type: 'folder'; id: string; payload: FolderTreeMovePayload }
+  | { type: 'note'; id: string; payload: NoteTreeMovePayload };
+
 /** 与 NotesView 树节点兼容的最小结构 */
 export type TreeNodeSnapshot = {
   key: string;
@@ -438,6 +442,60 @@ function findNodePlacement(tree: TreeNodeSnapshot[], key: string): NodePlacement
   return walk(tree, null);
 }
 
+function buildSiblingReorderPatches(
+  placement: NodePlacement,
+  folders: Folder[],
+  notes: Note[],
+): TreeReorderPatch[] {
+  const { parent, siblings } = placement;
+  const sortableSiblings = siblings.filter((item) => (
+    (item.nodeType === 'folder' || item.nodeType === 'note') && item.rawId
+  ));
+  const total = sortableSiblings.length;
+
+  return sortableSiblings.flatMap((node, index): TreeReorderPatch[] => {
+    const sortOrder = (total - index) * 1000;
+    if (node.nodeType === 'folder') {
+      if (parent?.nodeType === 'note') return [];
+      const parentId = parent?.nodeType === 'folder' ? parent.rawId! : null;
+      const existing = folders.find((item) => item.id === node.rawId);
+      if (
+        existing
+        && (existing.parentId ?? null) === parentId
+        && (existing.sortOrder ?? 0) === sortOrder
+      ) {
+        return [];
+      }
+      return [{ type: 'folder', id: node.rawId!, payload: { parentId, sortOrder } }];
+    }
+
+    if (node.nodeType === 'note') {
+      let folderId: string | null = null;
+      let parentId: string | null = null;
+      if (parent?.nodeType === 'folder') {
+        folderId = parent.rawId!;
+      } else if (parent?.nodeType === 'note') {
+        parentId = parent.rawId!;
+        const parentNote = notes.find((item) => item.id === parent.rawId);
+        folderId = parentNote?.folderId ?? null;
+      }
+
+      const existing = notes.find((item) => item.id === node.rawId);
+      if (
+        existing
+        && (existing.folderId ?? null) === folderId
+        && (existing.parentId ?? null) === parentId
+        && (existing.sortOrder ?? 0) === sortOrder
+      ) {
+        return [];
+      }
+      return [{ type: 'note', id: node.rawId!, payload: { folderId, parentId, sortOrder } }];
+    }
+
+    return [];
+  });
+}
+
 function buildMovePayload(
   placement: NodePlacement,
   folders: Folder[],
@@ -586,6 +644,29 @@ export function resolveTreeMoveFromFinalTree(
   if (isMoveParentCyclic(dragNode, parent, folders, notes)) return null;
 
   return buildMovePayload(placement, folders, notes);
+}
+
+/** 从最终树结构生成同级重排补丁，避免旧 sortOrder 重复/过密导致刷新后顺序回退 */
+export function resolveTreeReorderPatchesFromFinalTree(
+  tree: TreeNodeSnapshot[],
+  dragKey: string,
+  folders: Folder[],
+  notes: Note[],
+): TreeReorderPatch[] {
+  const dragNode = parseKeyToDropNode(dragKey);
+  if (!dragNode?.rawId || dragNode.nodeType === 'home') return [];
+
+  const placement = findNodePlacement(tree, dragKey);
+  if (!placement) return [];
+
+  const { node, parent } = placement;
+  if (node.nodeType === 'home') return [];
+  if (parent?.nodeType === 'home') return [];
+  if (node.nodeType === 'folder' && parent?.nodeType === 'note') return [];
+  if (isTreeMoveCyclic(tree, dragKey, parent)) return [];
+  if (isMoveParentCyclic(dragNode, parent, folders, notes)) return [];
+
+  return buildSiblingReorderPatches(placement, folders, notes);
 }
 
 /** 先按 UI 规则变换树，再从最终位置推导 API 移动参数 */
