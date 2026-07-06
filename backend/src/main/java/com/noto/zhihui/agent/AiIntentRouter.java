@@ -61,6 +61,12 @@ public class AiIntentRouter {
             "^(?:延迟|延后|推迟|往后|提前|往前|挪).{0,8}(?:一周|[一二三四五六七八九十\\d]+天)$"
     );
 
+    private static final Pattern ADD_REMINDER_TO_PENDING_PLAN = Pattern.compile(
+            "(?:加|增加|添加|新建|新增|创建|设|设置).{0,24}提醒"
+                    + "|提醒.{0,12}(?:上个|这个|待办|代办)"
+                    + "|(?:上个|这个).{0,8}(?:待办|代办).{0,12}提醒"
+    );
+
     private static final Pattern VAGUE_CONTEXT_REPLY = Pattern.compile(
             "^(?:改一下|修改一下|换一下|调整一下|改改|不对|不是|重新|算了|那个|这个|就这个|就这样|可以|好|行|嗯|对)$"
     );
@@ -92,6 +98,10 @@ public class AiIntentRouter {
             return new AiRouteVO("chat", "空输入默认问答", "rule");
         }
         String contextBlock = resolveContextBlock(sessionId, userId, recentContext);
+        AiRouteVO pendingReminderRoute = routePendingReminderWithRules(input, contextBlock);
+        if (pendingReminderRoute != null) {
+            return pendingReminderRoute;
+        }
         if (aiProperties.isEnabled() && chatModel != null) {
             try {
                 AiRouteVO llm = routeWithLlm(input, contextBlock);
@@ -189,6 +199,10 @@ public class AiIntentRouter {
         if (hasPendingPlan && PENDING_PLAN_AMBIGUOUS_SHIFT.matcher(input).find()) {
             return new AiRouteVO("clarify", "你想把待办时间延迟，还是只把提醒时间延迟？", "rule");
         }
+        AiRouteVO pendingReminderRoute = routePendingReminderWithRules(input, contextBlock);
+        if (pendingReminderRoute != null) {
+            return pendingReminderRoute;
+        }
         if (hasPendingPlan && PENDING_PLAN_EDIT.matcher(input).find()) {
             return new AiRouteVO("agent", "修改待确认方案", "rule");
         }
@@ -227,6 +241,19 @@ public class AiIntentRouter {
             return new AiRouteVO("agent", "包含办事关键词", "rule");
         }
         return new AiRouteVO("chat", "默认问答", "rule");
+    }
+
+    private AiRouteVO routePendingReminderWithRules(String input, String contextBlock) {
+        boolean hasPendingPlan = StringUtils.hasText(contextBlock)
+                && (contextBlock.contains("待确认方案") || contextBlock.contains("PENDING_PLAN_JSON:"));
+        if (!hasPendingPlan) {
+            return null;
+        }
+        String normalized = input == null ? "" : input.trim().replaceAll("\\s+", "");
+        if (ADD_REMINDER_TO_PENDING_PLAN.matcher(normalized).find()) {
+            return new AiRouteVO("agent", "给待确认待办补充提醒", "rule");
+        }
+        return null;
     }
 
     private String reasonOrDefault(String reason, String fallback) {

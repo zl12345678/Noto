@@ -42,7 +42,9 @@ public class AgentPlanner {
             "^(?:延迟|延后|推迟|往后|提前|往前|挪).{0,8}(?:一周|[一二三四五六七八九十\\d]+天)$"
     );
     private static final Pattern ADD_REMINDER_TO_PENDING_TODO = Pattern.compile(
-            "^(?:给?这个?)?(?:增加|添加|加|新建|创建|设|设置)?(?:一个|个)?提醒$"
+            "(?:加|增加|添加|新建|新增|创建|设|设置).{0,24}提醒"
+                    + "|提醒.{0,12}(?:上个|这个|待办|代办)"
+                    + "|(?:上个|这个).{0,8}(?:待办|代办).{0,12}提醒"
     );
     private static final Pattern PENDING_PLAN_LINE = Pattern.compile("^-\\s*(.+)$");
 
@@ -238,19 +240,22 @@ public class AgentPlanner {
             return null;
         }
         String normalized = instruction.trim().replaceAll("\\s+", "");
-        if (!ADD_REMINDER_TO_PENDING_TODO.matcher(normalized).matches()) {
+        if (!ADD_REMINDER_TO_PENDING_TODO.matcher(normalized).find()) {
             return null;
         }
         List<PendingPlanItem> pendingItems = readPendingPlanItems(conversationBlock);
         if (pendingItems.isEmpty() || pendingItems.stream().anyMatch(item -> "createReminder".equals(item.tool()))) {
             return null;
         }
-        PendingPlanItem todo = pendingItems.stream()
+        List<PendingPlanItem> todos = pendingItems.stream()
                 .filter(item -> "createTodo".equals(item.tool()))
-                .findFirst()
-                .orElse(null);
+                .toList();
+        PendingPlanItem todo = selectPendingTodoForReminder(normalized, todos);
         if (todo == null) {
-            return null;
+            AgentPlan clarify = new AgentPlan();
+            clarify.setReply("可以加提醒。请告诉我是给哪个待办加提醒。");
+            clarify.setToolCalls(new ArrayList<>());
+            return clarify;
         }
         String title = stringArg(todo.args(), "title");
         String dueAt = stringArg(todo.args(), "dueAt");
@@ -273,6 +278,23 @@ public class AgentPlanner {
                 "triggerAt", dueAt
         ))));
         return plan;
+    }
+
+    private PendingPlanItem selectPendingTodoForReminder(String normalizedInstruction, List<PendingPlanItem> todos) {
+        if (todos.isEmpty()) {
+            return null;
+        }
+        if (todos.size() == 1) {
+            return todos.get(0);
+        }
+        return todos.stream()
+                .filter(item -> {
+                    String title = stringArg(item.args(), "title");
+                    return StringUtils.hasText(title)
+                            && normalizedInstruction.contains(title.replaceAll("\\s+", ""));
+                })
+                .findFirst()
+                .orElse(null);
     }
 
     private AgentPlan tryPlanPatch(String instruction, String conversationBlock) {
