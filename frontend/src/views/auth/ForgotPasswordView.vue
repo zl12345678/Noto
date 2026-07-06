@@ -6,13 +6,13 @@
           <div class="auth-card-head">
             <span class="auth-eyebrow">密码帮助</span>
             <h2>忘记密码？</h2>
-            <span>出于安全考虑，系统不提供未登录的邮箱重置。请使用演示账号登录后在「个人设置」中修改密码。</span>
+            <span>出于安全考虑，系统不提供未登录的邮箱重置。普通账号请登录后在「个人设置」中修改密码。</span>
           </div>
 
           <a-alert type="info" show-icon class="demo-hint">
             <template #message>演示账号</template>
             <template #description>
-              用户名 <strong>admin</strong>，密码 <strong>admin123</strong>。登录后可在个人设置修改密码。
+              用户名 <strong>demo</strong>，密码 <strong>123456</strong>。演示账号不支持修改密码。
             </template>
           </a-alert>
 

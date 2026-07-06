@@ -207,7 +207,7 @@ Docker 环境默认启用 MinIO（`NOTO_MINIO_ENABLED=true`），笔记编辑器
 
 | 项 | 内容 |
 |----|------|
-| 默认账号 | `admin` / `admin123` |
+| 默认演示账号 | `demo` / `123456` |
 | 分组 | 6 个（工作 / 项目 / 学习 / 会议 / 灵感 / 参考） |
 | 文档 | **74 篇**（周会、日志、PRD、客户、剪藏等） |
 | 待办 | 20 条 |
@@ -227,7 +227,7 @@ NOTO_DEMO_CREATE_USER=true
 NOTO_DEMO_RESET_PASSWORD=true
 ```
 
-本地 IDE 开发若需预置数据：`$env:NOTO_DEMO_ENABLED="true"` 后启动后端；默认写入 `admin`，也可通过 `NOTO_DEMO_USERNAME` 指定其他账号。
+本地 IDE 开发若需预置数据：`$env:NOTO_DEMO_ENABLED="true"` 后启动后端；默认写入独立 `demo` 账号，也可通过 `NOTO_DEMO_USERNAME` 指定其他非管理员账号。
 
 **端口冲突**：若 9086 已被本地后端占用，运行 `.\scripts\demo-up.ps1` 会自动停止本地进程；保留本地后端时用 `.\scripts\demo-up.ps1 -InfraOnly` 或 `.\scripts\dev-up.ps1`（仅启 db/minio）。
 

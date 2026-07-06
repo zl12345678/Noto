@@ -45,7 +45,7 @@ npm run dev
 | 后端健康检查 | http://localhost:9086/api/v1/health |
 | MinIO 控制台 | http://localhost:9001 |
 
-默认演示账号：`admin` / `admin123`。
+默认演示账号：`demo` / `123456`。
 
 停止：
 
@@ -123,7 +123,7 @@ npm run build:prod
 
 约 15 分钟跑完一遍。
 
-- 登录：`admin` / `admin123`
+- 登录演示账号：`demo` / `123456`
 - 健康检查：`GET /api/v1/health` 返回 `code: 0`
 - 可选 AI：`GET /api/v1/ai/status` 返回 `enabled: true`
 - 新建笔记，保存后刷新仍存在

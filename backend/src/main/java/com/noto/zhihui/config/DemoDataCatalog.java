@@ -58,7 +58,7 @@ public final class DemoDataCatalog {
     }
 
     public static List<NoteSeed> allNotes(LocalDate today) {
-        return allNotes(today, "admin", "admin123");
+        return allNotes(today, "demo", "123456");
     }
 
     public static List<NoteSeed> allNotes(LocalDate today, String demoUsername, String demoPassword) {

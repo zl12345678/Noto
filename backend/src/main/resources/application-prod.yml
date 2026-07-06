@@ -21,9 +21,9 @@ noto:
     bucket: ${NOTO_MINIO_BUCKET:noto}
   demo:
     enabled: ${NOTO_DEMO_ENABLED:false}
-    username: ${NOTO_DEMO_USERNAME:admin}
-    password: ${NOTO_DEMO_PASSWORD:admin123}
-    email: ${NOTO_DEMO_EMAIL:admin@noto.com}
+    username: ${NOTO_DEMO_USERNAME:demo}
+    password: ${NOTO_DEMO_PASSWORD:123456}
+    email: ${NOTO_DEMO_EMAIL:demo@noto.local}
     nickname: ${NOTO_DEMO_NICKNAME:演示账号}
     create-user: ${NOTO_DEMO_CREATE_USER:false}
     reset-password: ${NOTO_DEMO_RESET_PASSWORD:false}

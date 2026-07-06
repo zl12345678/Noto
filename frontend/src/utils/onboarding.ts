@@ -5,7 +5,7 @@ export function isAutoHomepageNote(note: { title?: string; summary?: string | nu
   return note.title === '首页' && note.summary === '知识库首页';
 }
 
-export const DEMO_ACCOUNT_USERNAME = 'admin';
+export const DEMO_ACCOUNT_USERNAME = 'demo';
 
 export function isDemoAccount(user?: { username?: string } | null): boolean {
   return user?.username === DEMO_ACCOUNT_USERNAME;

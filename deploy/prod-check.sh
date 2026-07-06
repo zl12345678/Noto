@@ -55,7 +55,7 @@ JWT="$(read_env NOTO_JWT_SECRET)"
 PG_PASS="$(read_env POSTGRES_PASSWORD)"
 MINIO_PASS="$(read_env MINIO_ROOT_PASSWORD)"
 DEMO="$(read_env NOTO_DEMO_ENABLED false)"
-DEMO_USERNAME="$(read_env NOTO_DEMO_USERNAME admin)"
+DEMO_USERNAME="$(read_env NOTO_DEMO_USERNAME demo)"
 DEMO_CREATE_USER="$(read_env NOTO_DEMO_CREATE_USER false)"
 AI="$(read_env NOTO_AI_ENABLED false)"
 AI_KEY="$(read_env AI_DASHSCOPE_API_KEY)"
@@ -74,7 +74,8 @@ if is_placeholder "$MINIO_PASS" || [[ "$MINIO_PASS" == "minioadmin" ]]; then
 fi
 if [[ "$DEMO" == "true" ]]; then
   if [[ "$DEMO_USERNAME" == "admin" ]]; then
-    echo "WARN: NOTO_DEMO_ENABLED=true with NOTO_DEMO_USERNAME=admin — public demos should use a separate demo account"
+    echo "FAIL: NOTO_DEMO_ENABLED=true must not use NOTO_DEMO_USERNAME=admin — use a separate demo account"
+    FAIL=1
   fi
   if [[ "$DEMO_USERNAME" != "admin" && "$DEMO_CREATE_USER" != "true" ]]; then
     echo "WARN: NOTO_DEMO_CREATE_USER is not true — ensure user '$DEMO_USERNAME' already exists"

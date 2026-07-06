@@ -19,7 +19,7 @@ copy .env.example .env
 .\scripts\demo-up.ps1
 ```
 
-访问 `http://localhost:8080`，默认账号 `admin` / `admin123`。
+访问 `http://localhost:8080`，默认演示账号 `demo` / `123456`。
 
 停止：
 

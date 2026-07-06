@@ -75,7 +75,7 @@ Windows 等价脚本在 [`scripts/`](../scripts/README.md)：`prod-check.ps1`、
 - [ ] `POSTGRES_PASSWORD`、`MINIO_ROOT_PASSWORD` 已改为强密码
 - [ ] `NOTO_DEMO_ENABLED=false`
 - [ ] 安全组仅开放 **22 / 80 / 443**（不要开放 5432、9000、9086）
-- [ ] 不使用默认 `admin/admin123` 作为对外账号
+- [ ] 不使用 `admin` 作为对外演示账号；演示数据应写入独立 `demo` 账号
 - [ ] `https://域名/api/v1/health` 返回 `code: 0`
 - [ ] AI 流式问答（SSE）经 Nginx 正常
 - [ ] 配置定时备份：`deploy/prod-backup.sh` + cron

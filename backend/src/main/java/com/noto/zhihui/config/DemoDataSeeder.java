@@ -261,11 +261,11 @@ public class DemoDataSeeder implements ApplicationRunner {
     }
 
     private String resolveUsername() {
-        return normalizeOrDefault(demoProperties.getUsername(), "admin");
+        return normalizeOrDefault(demoProperties.getUsername(), "demo");
     }
 
     private String resolvePassword() {
-        return normalizeOrDefault(demoProperties.getPassword(), "admin123");
+        return normalizeOrDefault(demoProperties.getPassword(), "123456");
     }
 
     private List<DemoDataCatalog.NoteSeed> demoNotes() {
