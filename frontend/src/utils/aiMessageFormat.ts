@@ -315,12 +315,28 @@ export function normalizeAiMarkdown(text: string): string {
 }
 
 function stripInternalContextBlocks(text: string): string {
-  return text
-    .replace(/\r\n/g, '\n')
-    .split('\n')
-    .filter((line) => !line.trim().startsWith('PENDING_PLAN_JSON:'))
-    .join('\n')
-    .trim();
+  const visible: string[] = [];
+  let skippingPendingPlan = false;
+
+  for (const line of text.replace(/\r\n/g, '\n').split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('PENDING_PLAN_JSON:')) {
+      continue;
+    }
+    if (trimmed === '待确认方案：' || trimmed === '待确认方案:') {
+      skippingPendingPlan = true;
+      continue;
+    }
+    if (skippingPendingPlan) {
+      if (!trimmed || /^-\s*(?:stepId=|.*\btool=)/.test(trimmed)) {
+        continue;
+      }
+      skippingPendingPlan = false;
+    }
+    visible.push(line);
+  }
+
+  return visible.join('\n').trim();
 }
 
 export function isReadOnlyListTask(steps?: AiAgentStep[]): boolean {

@@ -31,80 +31,11 @@ public final class AgentReplyComposer {
                     sections.add(formatted);
                 }
             }
-            String pendingPlan = formatPendingPlan(steps);
-            if (StringUtils.hasText(pendingPlan)) {
-                sections.add(pendingPlan);
-            }
-            String pendingPlanJson = formatPendingPlanJson(steps, objectMapper);
-            if (StringUtils.hasText(pendingPlanJson)) {
-                sections.add(pendingPlanJson);
-            }
         }
         if (sections.isEmpty()) {
             return StringUtils.hasText(planReply) ? planReply.trim() : "已处理你的请求。";
         }
         return String.join("\n\n", sections);
-    }
-
-    private static String formatPendingPlan(List<AiAgentStepVO> steps) {
-        List<String> lines = new ArrayList<>();
-        for (AiAgentStepVO step : steps) {
-            if (!"pending_confirm".equals(step.getStatus()) || step.getActionPayload() == null) {
-                continue;
-            }
-            lines.add("- stepId=%s; tool=%s; %s; status=pending_confirm".formatted(
-                    step.getId(),
-                    step.getTool(),
-                    formatPayloadFields(step.getActionPayload())
-            ));
-        }
-        if (lines.isEmpty()) {
-            return "";
-        }
-        return "待确认方案：\n" + String.join("\n", lines);
-    }
-
-    private static String formatPendingPlanJson(List<AiAgentStepVO> steps, ObjectMapper objectMapper) {
-        List<java.util.Map<String, Object>> pending = new ArrayList<>();
-        for (AiAgentStepVO step : steps) {
-            if (!"pending_confirm".equals(step.getStatus()) || step.getActionPayload() == null) {
-                continue;
-            }
-            java.util.Map<String, Object> item = new java.util.LinkedHashMap<>();
-            item.put("stepId", step.getId());
-            item.put("tool", step.getTool());
-            item.put("args", step.getActionPayload());
-            item.put("status", step.getStatus());
-            pending.add(item);
-        }
-        if (pending.isEmpty()) {
-            return "";
-        }
-        try {
-            return "PENDING_PLAN_JSON:" + objectMapper.writeValueAsString(java.util.Map.of("steps", pending));
-        } catch (Exception ex) {
-            return "";
-        }
-    }
-
-    private static String formatPayloadFields(Object payload) {
-        if (!(payload instanceof java.util.Map<?, ?> map)) {
-            return "";
-        }
-        List<String> fields = new ArrayList<>();
-        appendField(fields, map, "title");
-        appendField(fields, map, "todoTitle");
-        appendField(fields, map, "dueAt");
-        appendField(fields, map, "triggerAt");
-        appendField(fields, map, "message");
-        return String.join("; ", fields);
-    }
-
-    private static void appendField(List<String> fields, java.util.Map<?, ?> map, String key) {
-        Object value = map.get(key);
-        if (value != null && StringUtils.hasText(String.valueOf(value))) {
-            fields.add(key + "=" + value);
-        }
     }
 
     private static String formatStepOutput(String tool, String output, ObjectMapper objectMapper) {
