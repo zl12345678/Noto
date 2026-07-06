@@ -1,7 +1,9 @@
 package com.noto.zhihui.config;
 
+import com.noto.zhihui.security.AuditRequestFilter;
 import com.noto.zhihui.security.JwtAuthenticationFilter;
 import com.noto.zhihui.security.JwtTokenService;
+import com.noto.zhihui.service.AuditLogService;
 import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,8 +20,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtTokenService jwtTokenService) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            JwtTokenService jwtTokenService,
+            AuditLogService auditLogService
+    ) throws Exception {
         JwtAuthenticationFilter jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtTokenService);
+        AuditRequestFilter auditRequestFilter = new AuditRequestFilter(auditLogService);
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -34,6 +41,7 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(auditRequestFilter, JwtAuthenticationFilter.class)
                 .build();
     }
 

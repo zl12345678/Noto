@@ -18,6 +18,7 @@ const AiShowcaseView = () => import('../views/ai-showcase/AiShowcaseView.vue');
 const DriveView = () => import('../views/drive/DriveView.vue');
 const MySharesView = () => import('../views/share/MySharesView.vue');
 const ShareView = () => import('../views/share/ShareView.vue');
+const AuditLogsView = () => import('../views/admin/AuditLogsView.vue');
 
 const router = createRouter({
   history: createWebHistory(),
@@ -101,6 +102,12 @@ const router = createRouter({
           component: AiShowcaseView,
         },
         {
+          path: 'admin/audit-logs',
+          name: 'admin-audit-logs',
+          component: AuditLogsView,
+          meta: { adminOnly: true },
+        },
+        {
           path: 'ai/agent',
           redirect: '/ai',
         },
@@ -135,6 +142,11 @@ router.beforeEach(async (to) => {
   if (!authStore.isAuthenticated) {
     message.warning('请先登录');
     return '/login';
+  }
+
+  if (to.meta.adminOnly && authStore.currentUser?.username !== 'admin') {
+    message.error('仅管理员可访问');
+    return '/';
   }
 
   const mobileRedirect = resolveMobileRedirect(to);

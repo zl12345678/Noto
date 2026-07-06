@@ -35,6 +35,7 @@
               <a-menu-item key="drive">网盘</a-menu-item>
               <a-menu-item key="shares">我的分享</a-menu-item>
               <a-menu-item key="reminders">提醒</a-menu-item>
+              <a-menu-item v-if="isAdmin" key="audit">操作日志</a-menu-item>
               <a-menu-divider />
               <a-menu-item key="dashboard">首页</a-menu-item>
             </a-menu>
@@ -95,6 +96,7 @@ import { message } from 'ant-design-vue';
 import { useAiPrefsStore } from '../store/aiPrefs';
 import { useTodoSummaryStore } from '../store/todoSummary';
 import { useWorkspaceStore } from '../store/workspace';
+import { useAuthStore } from '../store/auth';
 import { useReminderNotifier } from '../composables/useReminderNotifier';
 import { useDigestNotifier } from '../composables/useDigestNotifier';
 import { useOverdueNotifier } from '../composables/useOverdueNotifier';
@@ -106,6 +108,7 @@ const moduleTabs = useModuleTabsStore();
 const aiPrefsStore = useAiPrefsStore();
 const todoSummary = useTodoSummaryStore();
 const workspaceStore = useWorkspaceStore();
+const authStore = useAuthStore();
 useReminderNotifier();
 useDigestNotifier();
 useOverdueNotifier();
@@ -134,9 +137,11 @@ const activeTab = computed((): TabKey => {
   if (name === 'todos') return 'todos';
   if (name === 'profile' || name === 'reminders') return 'me';
   if (name === 'search') return 'home';
-  if (name === 'ai' || name === 'drive' || name === 'my-shares') return 'me';
+  if (name === 'ai' || name === 'drive' || name === 'my-shares' || name === 'admin-audit-logs') return 'me';
   return 'home';
 });
+
+const isAdmin = computed(() => authStore.currentUser?.username === 'admin');
 
 const isNoteDetailRoute = computed(
   () => route.name === 'notes' && typeof route.params.id === 'string' && route.params.id.length > 0,
@@ -150,6 +155,7 @@ const showBack = computed(
     route.name === 'ai' ||
     route.name === 'drive' ||
     route.name === 'my-shares' ||
+    route.name === 'admin-audit-logs' ||
     (route.name === 'notes' && !isNoteDetailRoute.value && !!route.query.workspace),
 );
 
@@ -172,6 +178,7 @@ const headerTitle = computed(() => {
   if (route.name === 'ai') return 'AI 助手';
   if (route.name === 'drive') return '网盘';
   if (route.name === 'my-shares') return '我的分享';
+  if (route.name === 'admin-audit-logs') return '操作日志';
   if (route.name === 'profile') return '我的';
   if (route.name === 'todos') return '待办';
   if (route.name === 'notes') {
@@ -227,6 +234,10 @@ function onMoreMenuClick(info: { key: string | number }) {
     void router.push('/reminders');
     return;
   }
+  if (key === 'audit') {
+    void router.push('/admin/audit-logs');
+    return;
+  }
   if (key === 'dashboard') {
     void router.push('/');
   }
@@ -238,7 +249,8 @@ function onBack() {
     route.name === 'reminders' ||
     route.name === 'ai' ||
     route.name === 'drive' ||
-    route.name === 'my-shares'
+    route.name === 'my-shares' ||
+    route.name === 'admin-audit-logs'
   ) {
     router.back();
     return;

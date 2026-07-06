@@ -10,6 +10,7 @@ export type ModuleTabIcon =
   | 'share'
   | 'note'
   | 'profile'
+  | 'audit'
   | 'default';
 
 export interface ModuleTabMeta {
@@ -36,6 +37,9 @@ export function resolveModuleTabMeta(
   }
   if (name === 'ai-showcase') {
     return { id: 'ai-showcase', label: 'AI 展示', icon: 'ai', closable: true };
+  }
+  if (name === 'admin-audit-logs') {
+    return { id: 'admin-audit-logs', label: '操作日志', icon: 'audit', closable: true };
   }
   if (name === 'search') {
     const q = typeof route.query.q === 'string' ? route.query.q.trim() : '';

@@ -3,6 +3,7 @@ package com.noto.zhihui.controller.auth;
 import com.noto.zhihui.common.api.ApiResponse;
 import com.noto.zhihui.common.exception.BizException;
 import com.noto.zhihui.common.exception.ErrorCode;
+import com.noto.zhihui.common.util.RequestClientUtils;
 import com.noto.zhihui.config.NotoDemoProperties;
 import com.noto.zhihui.dto.auth.ChangePasswordRequest;
 import com.noto.zhihui.dto.auth.LoginRequest;
@@ -14,6 +15,7 @@ import com.noto.zhihui.security.JwtTokenService;
 import com.noto.zhihui.security.UserContext;
 import com.noto.zhihui.service.UserService;
 import com.noto.zhihui.service.WorkspaceService;
+import com.noto.zhihui.service.AuditLogService;
 import com.noto.zhihui.vo.auth.CurrentUserVO;
 import com.noto.zhihui.vo.auth.LoginResponse;
 import jakarta.annotation.PostConstruct;
@@ -26,6 +28,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.servlet.http.HttpServletRequest;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -42,19 +47,22 @@ public class AuthController {
     private final WorkspaceService workspaceService;
     private final PasswordEncoder passwordEncoder;
     private final NotoDemoProperties demoProperties;
+    private final AuditLogService auditLogService;
 
     public AuthController(
             JwtTokenService jwtTokenService,
             UserService userService,
             WorkspaceService workspaceService,
             PasswordEncoder passwordEncoder,
-            NotoDemoProperties demoProperties
+            NotoDemoProperties demoProperties,
+            AuditLogService auditLogService
     ) {
         this.jwtTokenService = jwtTokenService;
         this.userService = userService;
         this.workspaceService = workspaceService;
         this.passwordEncoder = passwordEncoder;
         this.demoProperties = demoProperties;
+        this.auditLogService = auditLogService;
     }
 
     @PostConstruct
@@ -76,7 +84,7 @@ public class AuthController {
 
     @Transactional
     @PostMapping("/login")
-    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         UserEntity user = userService.findByUsername(request.getUsername());
         if (user == null || (user.getStatus() != null && user.getStatus() != 0)) {
             throw new BizException(ErrorCode.UNAUTHORIZED);
@@ -89,6 +97,16 @@ public class AuthController {
         userService.updateById(user);
 
         String token = jwtTokenService.generateToken(user.getId(), user.getUsername());
+        auditLogService.logOperation(
+                user.getId(),
+                null,
+                "auth.login",
+                "auth",
+                user.getId(),
+                RequestClientUtils.clientIp(httpRequest),
+                RequestClientUtils.userAgent(httpRequest),
+                Map.of("username", user.getUsername())
+        );
         return ApiResponse.success(buildLoginResponse(token, user), null);
     }
 

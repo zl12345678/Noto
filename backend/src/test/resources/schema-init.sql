@@ -366,6 +366,8 @@ CREATE TABLE IF NOT EXISTS audit_log (
     action_type VARCHAR(64) NOT NULL,
     resource_type VARCHAR(64),
     resource_id BIGINT,
+    ip_address VARCHAR(64),
+    user_agent VARCHAR(512),
     detail TEXT,
     trace_id VARCHAR(128),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -378,6 +380,8 @@ COMMENT ON COLUMN audit_log.user_id IS '操作用户ID';
 COMMENT ON COLUMN audit_log.action_type IS '操作类型';
 COMMENT ON COLUMN audit_log.resource_type IS '资源类型';
 COMMENT ON COLUMN audit_log.resource_id IS '资源ID';
+COMMENT ON COLUMN audit_log.ip_address IS '客户端 IP';
+COMMENT ON COLUMN audit_log.user_agent IS '客户端 User-Agent';
 COMMENT ON COLUMN audit_log.detail IS '操作详情';
 COMMENT ON COLUMN audit_log.trace_id IS '链路追踪ID';
 COMMENT ON COLUMN audit_log.created_at IS '创建时间';
@@ -414,6 +418,8 @@ CREATE INDEX IF NOT EXISTS idx_todo_due_at ON todo_item(due_at);
 CREATE INDEX IF NOT EXISTS idx_reminder_status_trigger_at ON reminder(status, trigger_at);
 CREATE INDEX IF NOT EXISTS idx_ai_task_status_type ON ai_task(status, task_type);
 CREATE INDEX IF NOT EXISTS idx_audit_log_user_created_at ON audit_log(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_log_ip_created_at ON audit_log(ip_address, created_at);
 CREATE INDEX IF NOT EXISTS idx_search_index_task_status ON search_index_task(status);
 CREATE INDEX IF NOT EXISTS idx_ai_chat_session_user_id ON ai_chat_session(user_id);
 CREATE INDEX IF NOT EXISTS idx_ai_chat_message_session_id ON ai_chat_message(session_id);

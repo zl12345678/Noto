@@ -83,6 +83,8 @@ function iconText(icon: ModuleTabIcon) {
       return '⛓';
     case 'note':
       return '▤';
+    case 'audit':
+      return '◎';
     default:
       return '•';
   }

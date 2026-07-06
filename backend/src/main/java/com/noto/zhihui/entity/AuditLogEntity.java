@@ -31,6 +31,12 @@ public class AuditLogEntity {
     @TableField("resource_id")
     private Long resourceId;
 
+    @TableField("ip_address")
+    private String ipAddress;
+
+    @TableField("user_agent")
+    private String userAgent;
+
     private String detail;
 
     @TableField("trace_id")

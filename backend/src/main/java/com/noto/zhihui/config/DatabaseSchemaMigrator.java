@@ -127,13 +127,27 @@ public class DatabaseSchemaMigrator {
                     action_type VARCHAR(64) NOT NULL,
                     resource_type VARCHAR(64),
                     resource_id BIGINT,
+                    ip_address VARCHAR(64),
+                    user_agent VARCHAR(512),
                     detail TEXT,
                     trace_id VARCHAR(128),
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
                 """);
         jdbcTemplate.execute("""
+                ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS ip_address VARCHAR(64)
+                """);
+        jdbcTemplate.execute("""
+                ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS user_agent VARCHAR(512)
+                """);
+        jdbcTemplate.execute("""
                 CREATE INDEX IF NOT EXISTS idx_audit_log_user_created_at ON audit_log(user_id, created_at)
+                """);
+        jdbcTemplate.execute("""
+                CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at)
+                """);
+        jdbcTemplate.execute("""
+                CREATE INDEX IF NOT EXISTS idx_audit_log_ip_created_at ON audit_log(ip_address, created_at)
                 """);
         jdbcTemplate.execute("""
                 CREATE TABLE IF NOT EXISTS note_rag_chunk (

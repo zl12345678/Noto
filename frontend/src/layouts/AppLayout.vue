@@ -87,6 +87,18 @@
           </a-menu>
         </div>
 
+        <div v-if="isAdmin" class="sider-section sider-section-compact">
+          <p class="section-label">管理</p>
+          <a-menu mode="inline" :selected-keys="selectedKeys" class="side-menu" @click="handleMenuClick">
+            <a-menu-item key="admin-audit-logs">
+              <span class="entry-item">
+                <span class="entry-dot red"></span>
+                <span>操作日志</span>
+              </span>
+            </a-menu-item>
+          </a-menu>
+        </div>
+
         <div class="sider-section knowledge-section">
           <div class="section-head">
             <p class="section-label">知识库</p>
@@ -393,6 +405,7 @@ const routeViewKey = computed(() => {
 
 const isNotesRoute = computed(() => route.name === 'notes');
 const isAiRoute = computed(() => route.name === 'ai');
+const isAdmin = computed(() => authStore.currentUser?.username === 'admin');
 const isNoteDetailRoute = computed(
   () => route.name === 'notes' && typeof route.params.id === 'string' && route.params.id.length > 0,
 );
@@ -467,6 +480,7 @@ const selectedKeys = computed(() => {
   if (route.name === 'reminders') return ['reminders'];
   if (route.name === 'ai') return ['ai'];
   if (route.name === 'ai-showcase') return ['ai-showcase'];
+  if (route.name === 'admin-audit-logs') return ['admin-audit-logs'];
   if (route.name === 'profile') return [];
   return [];
 });
@@ -710,6 +724,10 @@ function handleMenuClick({ key }: { key: string }) {
     activateModuleTab('ai-showcase', () => router.push('/ai-showcase'));
     return;
   }
+  if (key === 'admin-audit-logs') {
+    activateModuleTab('admin-audit-logs', () => router.push('/admin/audit-logs'));
+    return;
+  }
   if (key.startsWith('workspace:')) {
     const workspaceId = key.replace('workspace:', '');
     const tabId = `notes:${workspaceId}`;
@@ -872,6 +890,10 @@ function handleMenuClick({ key }: { key: string }) {
 
 .entry-dot.cyan {
   background: #06b6d4;
+}
+
+.entry-dot.red {
+  background: #ef4444;
 }
 
 .entry-dot.indigo {
