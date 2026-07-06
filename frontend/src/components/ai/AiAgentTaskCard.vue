@@ -99,6 +99,26 @@
             :rows="4"
             :placeholder="field.placeholder"
           />
+          <a-date-picker
+            v-else-if="field.kind === 'datetime'"
+            v-model:value="editForm[field.key]"
+            show-time
+            format="YYYY-MM-DD HH:mm"
+            style="width: 100%"
+          />
+          <a-select
+            v-else-if="field.kind === 'select'"
+            v-model:value="editForm[field.key]"
+            :options="field.options"
+            :placeholder="field.placeholder"
+          />
+          <a-input-number
+            v-else-if="field.kind === 'number'"
+            v-model:value="editForm[field.key]"
+            :min="field.min"
+            :max="field.max"
+            style="width: 100%"
+          />
           <a-input
             v-else
             v-model:value="editForm[field.key]"
@@ -113,6 +133,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { message } from 'ant-design-vue';
+import dayjs, { type Dayjs } from 'dayjs';
 import {
   AI_TASK_STATUS,
   AI_TASK_STATUS_LABEL,
@@ -142,7 +163,7 @@ const confirming = ref(false);
 const savingEdit = ref(false);
 const editOpen = ref(false);
 const editingStep = ref<AiAgentStep | null>(null);
-const editForm = ref<Record<string, string>>({});
+const editForm = ref<Record<string, EditableValue>>({});
 const selectedStepIds = ref<Set<string>>(new Set());
 
 const pendingSteps = computed(
@@ -238,10 +259,9 @@ function openEdit(step: AiAgentStep) {
   editingStep.value = step;
   const payload = step.actionPayload || {};
   const fields = buildEditableFields(step);
-  const next: Record<string, string> = {};
+  const next: Record<string, EditableValue> = {};
   fields.forEach((field) => {
-    const value = payload[field.key];
-    next[field.key] = value == null ? '' : String(value);
+    next[field.key] = toEditableValue(payload[field.key], field);
   });
   editForm.value = next;
   editOpen.value = true;
@@ -254,7 +274,7 @@ const saveEdit = async () => {
     const original = editingStep.value.actionPayload || {};
     const nextPayload: Record<string, unknown> = { ...original };
     editFields.value.forEach((field) => {
-      nextPayload[field.key] = editForm.value[field.key]?.trim() || '';
+      nextPayload[field.key] = fromEditableValue(editForm.value[field.key], field);
     });
     const updated = await updateAgentTaskStep(props.task.id, editingStep.value.id, nextPayload);
     emit('taskUpdated', updated);
@@ -296,7 +316,28 @@ interface EditableField {
   label: string;
   placeholder?: string;
   multiline?: boolean;
+  kind?: 'input' | 'textarea' | 'datetime' | 'select' | 'number';
+  options?: Array<{ label: string; value: string | number | boolean }>;
+  min?: number;
+  max?: number;
 }
+
+type EditableValue = string | number | boolean | Dayjs | null | undefined;
+
+const hiddenPayloadKeys = new Set([
+  'workspaceId',
+  'noteId',
+  'todoId',
+  'reminderId',
+  'attachmentId',
+  'folderId',
+  'parentId',
+  'tagId',
+  'tagIds',
+  'shareId',
+  'token',
+  'contentType',
+]);
 
 function buildEditableFields(step: AiAgentStep | null): EditableField[] {
   if (!step) return [];
@@ -304,12 +345,12 @@ function buildEditableFields(step: AiAgentStep | null): EditableField[] {
   const preferred = preferredEditableFields(step.tool);
   const fields = preferred.filter((field) => Object.prototype.hasOwnProperty.call(payload, field.key));
   Object.keys(payload).forEach((key) => {
-    if (!fields.some((field) => field.key === key) && isEditablePayloadValue(payload[key])) {
+    if (!fields.some((field) => field.key === key) && !hiddenPayloadKeys.has(key) && isEditablePayloadValue(payload[key])) {
       fields.push({
         key,
         label: payloadFieldLabel(key),
         placeholder: payloadFieldPlaceholder(key),
-        multiline: key === 'content',
+        ...inferFieldControl(key, payload[key]),
       });
     }
   });
@@ -319,17 +360,36 @@ function buildEditableFields(step: AiAgentStep | null): EditableField[] {
 function preferredEditableFields(tool: string): EditableField[] {
   const common = {
     title: { key: 'title', label: '标题', placeholder: '请输入标题' },
-    content: { key: 'content', label: '内容', placeholder: '请输入内容', multiline: true },
-    dueAt: { key: 'dueAt', label: '截止时间', placeholder: '例如 2026-07-07T18:00:00' },
-    triggerAt: { key: 'triggerAt', label: '提醒时间', placeholder: '例如 2026-07-07T18:00:00' },
-    message: { key: 'message', label: '提醒内容', placeholder: '请输入提醒内容' },
+    content: { key: 'content', label: '内容', placeholder: '请输入内容', multiline: true, kind: 'textarea' },
+    dueAt: { key: 'dueAt', label: '截止时间', kind: 'datetime' },
+    triggerAt: { key: 'triggerAt', label: '提醒时间', kind: 'datetime' },
+    message: { key: 'message', label: '提醒内容', placeholder: '请输入提醒内容', multiline: true, kind: 'textarea' },
     todoTitle: { key: 'todoTitle', label: '关联待办', placeholder: '请输入关联待办标题' },
+    horizon: {
+      key: 'horizon',
+      label: '类型',
+      kind: 'select',
+      options: [
+        { label: '近期行动', value: 'action' },
+        { label: '长期目标', value: 'long_term' },
+      ],
+    },
+    priority: {
+      key: 'priority',
+      label: '优先级',
+      kind: 'select',
+      options: [
+        { label: '高', value: 1 },
+        { label: '中', value: 2 },
+        { label: '低', value: 3 },
+      ],
+    },
   } satisfies Record<string, EditableField>;
 
   switch (tool) {
     case 'createTodo':
     case 'updateTodo':
-      return [common.title, common.dueAt];
+      return [common.title, common.horizon, common.dueAt, common.priority];
     case 'createReminder':
       return [common.message, common.triggerAt, common.todoTitle];
     case 'createNote':
@@ -342,6 +402,57 @@ function preferredEditableFields(tool: string): EditableField[] {
 
 function isEditablePayloadValue(value: unknown) {
   return value == null || ['string', 'number', 'boolean'].includes(typeof value);
+}
+
+function inferFieldControl(key: string, value: unknown): Partial<EditableField> {
+  if (key === 'dueAt' || key === 'triggerAt') return { kind: 'datetime' };
+  if (key === 'content' || key === 'message' || key === 'description') return { kind: 'textarea', multiline: true };
+  if (key === 'priority') {
+    return {
+      kind: 'select',
+      options: [
+        { label: '高', value: 1 },
+        { label: '中', value: 2 },
+        { label: '低', value: 3 },
+      ],
+    };
+  }
+  if (key === 'horizon') {
+    return {
+      kind: 'select',
+      options: [
+        { label: '近期行动', value: 'action' },
+        { label: '长期目标', value: 'long_term' },
+      ],
+    };
+  }
+  if (typeof value === 'number') return { kind: 'number' };
+  return { kind: 'input' };
+}
+
+function toEditableValue(value: unknown, field: EditableField): EditableValue {
+  if (field.kind === 'datetime') {
+    if (!value) return null;
+    const parsed = dayjs(String(value));
+    return parsed.isValid() ? parsed : null;
+  }
+  if (field.kind === 'number') {
+    return typeof value === 'number' ? value : Number(value || 0);
+  }
+  return value == null ? '' : (value as EditableValue);
+}
+
+function fromEditableValue(value: EditableValue, field: EditableField): unknown {
+  if (field.kind === 'datetime') {
+    return dayjs.isDayjs(value) ? value.format('YYYY-MM-DDTHH:mm:ss') : null;
+  }
+  if (field.kind === 'number') {
+    return value == null || value === '' ? null : Number(value);
+  }
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+  return value ?? '';
 }
 
 function payloadFieldLabel(key: string) {
