@@ -41,6 +41,9 @@ public class AgentPlanner {
     private static final Pattern AMBIGUOUS_RELATIVE_SHIFT = Pattern.compile(
             "^(?:延迟|延后|推迟|往后|提前|往前|挪).{0,8}(?:一周|[一二三四五六七八九十\\d]+天)$"
     );
+    private static final Pattern ADD_REMINDER_TO_PENDING_TODO = Pattern.compile(
+            "^(?:给?这个?)?(?:增加|添加|加|新建|创建|设|设置)?(?:一个|个)?提醒$"
+    );
     private static final Pattern PENDING_PLAN_LINE = Pattern.compile("^-\\s*(.+)$");
 
     private final ChatModel chatModel;
@@ -62,6 +65,10 @@ public class AgentPlanner {
     }
 
     public AgentPlan plan(String instruction, String userMemoryBlock, String conversationBlock) {
+        AgentPlan reminderPlan = tryAddReminderToPendingTodo(instruction, conversationBlock);
+        if (reminderPlan != null) {
+            return reminderPlan;
+        }
         AgentPlan patchedPlan = tryPlanPatch(instruction, conversationBlock);
         if (patchedPlan != null) {
             return patchedPlan;
@@ -223,6 +230,48 @@ public class AgentPlanner {
             plan.getToolCalls().add(new AgentToolCall("listNotes", Map.of("folderKeyword", fallbackKeyword)));
             plan.setReply("正在为你查询知识库目录…");
         }
+        return plan;
+    }
+
+    private AgentPlan tryAddReminderToPendingTodo(String instruction, String conversationBlock) {
+        if (!StringUtils.hasText(instruction) || !StringUtils.hasText(conversationBlock)) {
+            return null;
+        }
+        String normalized = instruction.trim().replaceAll("\\s+", "");
+        if (!ADD_REMINDER_TO_PENDING_TODO.matcher(normalized).matches()) {
+            return null;
+        }
+        List<PendingPlanItem> pendingItems = readPendingPlanItems(conversationBlock);
+        if (pendingItems.isEmpty() || pendingItems.stream().anyMatch(item -> "createReminder".equals(item.tool()))) {
+            return null;
+        }
+        PendingPlanItem todo = pendingItems.stream()
+                .filter(item -> "createTodo".equals(item.tool()))
+                .findFirst()
+                .orElse(null);
+        if (todo == null) {
+            return null;
+        }
+        String title = stringArg(todo.args(), "title");
+        String dueAt = stringArg(todo.args(), "dueAt");
+        if (!StringUtils.hasText(title) || !StringUtils.hasText(dueAt)) {
+            AgentPlan clarify = new AgentPlan();
+            clarify.setReply("可以，我会给这个待办加提醒。请告诉我提醒时间。");
+            clarify.setToolCalls(new ArrayList<>());
+            return clarify;
+        }
+
+        AgentPlan plan = new AgentPlan();
+        plan.setReply("已给待确认的待办补充提醒，请确认下方新方案。");
+        plan.setToolCalls(new ArrayList<>());
+        for (PendingPlanItem item : pendingItems) {
+            plan.getToolCalls().add(new AgentToolCall(item.tool(), new HashMap<>(item.args())));
+        }
+        plan.getToolCalls().add(new AgentToolCall("createReminder", new HashMap<>(Map.of(
+                "todoTitle", title,
+                "message", title,
+                "triggerAt", dueAt
+        ))));
         return plan;
     }
 
