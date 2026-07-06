@@ -17,6 +17,7 @@ import com.noto.zhihui.common.exception.BizException;
 import com.noto.zhihui.common.exception.ErrorCode;
 import com.noto.zhihui.dto.ai.AiAgentConfirmRequest;
 import com.noto.zhihui.dto.ai.AiAgentPlanRequest;
+import com.noto.zhihui.dto.ai.AiAgentStepUpdateRequest;
 import com.noto.zhihui.dto.ai.ConfirmExtractTodoItem;
 import com.noto.zhihui.dto.ai.ConfirmExtractTodosRequest;
 import com.noto.zhihui.dto.note.NoteCreateRequest;
@@ -239,6 +240,43 @@ public class AiAgentServiceImpl implements AiAgentService {
                 Map.of("stepIds", request.getStepIds())
         );
         return result;
+    }
+
+    @Override
+    @Transactional
+    public AiAgentTaskVO updateStep(Long taskId, String stepId, AiAgentStepUpdateRequest request, Long userId) {
+        AiTaskEntity task = requireOwnedTask(taskId, userId);
+        AgentTaskPayload payload = readPayload(task.getOutputContent());
+        if (payload.getSteps() == null || payload.getSteps().isEmpty()) {
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "任务无可修改步骤");
+        }
+        AiAgentStepVO target = payload.getSteps().stream()
+                .filter(step -> Objects.equals(step.getId(), stepId))
+                .findFirst()
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND.getCode(), "未找到要修改的步骤"));
+        if (!"pending_confirm".equals(target.getStatus())) {
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "只能修改待确认步骤");
+        }
+        if (request.getActionPayload() == null || request.getActionPayload().isEmpty()) {
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "修改内容不能为空");
+        }
+
+        target.setActionPayload(new HashMap<>(request.getActionPayload()));
+        payload.setAssistantReply("已修改待确认方案，请确认下方执行方案。");
+        refreshPendingState(payload);
+        task.setOutputContent(writePayload(payload));
+        task.setStatus(hasPendingConfirm(payload.getSteps()) ? AiTaskStatus.AWAITING_CONFIRM : AiTaskStatus.SUCCESS);
+        aiTaskMapper.updateById(task);
+
+        auditLogService.logAiCall(
+                userId,
+                task.getWorkspaceId(),
+                "ai.agent.update_step",
+                "ai_task",
+                task.getId(),
+                Map.of("stepId", stepId, "tool", target.getTool())
+        );
+        return toVO(task, payload);
     }
 
     @Override
@@ -945,10 +983,14 @@ public class AiAgentServiceImpl implements AiAgentService {
         payload.setInstruction(instruction);
         payload.setAssistantReply(AgentReplyComposer.compose(reply, steps, objectMapper));
         payload.setSteps(steps == null ? List.of() : new ArrayList<>(steps));
+        refreshPendingState(payload);
+        return payload;
+    }
+
+    private void refreshPendingState(AgentTaskPayload payload) {
         PendingPlanState pendingPlan = PendingPlanState.fromSteps(null, payload.getSteps());
         payload.setPendingPlan(pendingPlan);
         payload.setAgentState(ConversationAgentState.fromPendingPlan(pendingPlan));
-        return payload;
     }
 
     private boolean hasPendingConfirm(List<AiAgentStepVO> steps) {

@@ -5,6 +5,7 @@ import com.noto.zhihui.common.exception.BizException;
 import com.noto.zhihui.common.exception.ErrorCode;
 import com.noto.zhihui.dto.ai.AiAgentConfirmRequest;
 import com.noto.zhihui.dto.ai.AiAgentPlanRequest;
+import com.noto.zhihui.dto.ai.AiAgentStepUpdateRequest;
 import com.noto.zhihui.service.AiAgentService;
 import com.noto.zhihui.vo.ai.AiAgentTaskVO;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -21,6 +22,11 @@ public class DisabledAiAgentServiceImpl implements AiAgentService {
 
     @Override
     public AiAgentTaskVO confirm(Long taskId, AiAgentConfirmRequest request, Long userId) {
+        throw disabled();
+    }
+
+    @Override
+    public AiAgentTaskVO updateStep(Long taskId, String stepId, AiAgentStepUpdateRequest request, Long userId) {
         throw disabled();
     }
 

@@ -41,6 +41,15 @@
             <a-tag v-if="step.status === 'done'" color="success" size="small">已完成</a-tag>
             <a-tag v-else-if="step.status === 'skipped'" size="small">已跳过</a-tag>
             <a-tag v-else-if="step.status === 'pending_confirm'" color="warning" size="small">待确认</a-tag>
+            <a-button
+              v-if="step.status === 'pending_confirm'"
+              type="link"
+              size="small"
+              class="step-edit"
+              @click="openEdit(step)"
+            >
+              修改
+            </a-button>
           </div>
           <p class="step-summary">{{ presentDone(step) || present(step).summary }}</p>
           <p v-if="present(step).detail && step.status === 'pending_confirm'" class="step-detail">
@@ -69,6 +78,35 @@
       sub-title="已执行你选中的项目，可在笔记、待办和提醒中查看"
       class="done-result"
     />
+
+    <a-modal
+      v-model:open="editOpen"
+      title="修改待确认项"
+      ok-text="保存修改"
+      cancel-text="取消"
+      :confirm-loading="savingEdit"
+      @ok="saveEdit"
+    >
+      <a-form layout="vertical" class="edit-form">
+        <a-form-item
+          v-for="field in editFields"
+          :key="field.key"
+          :label="field.label"
+        >
+          <a-textarea
+            v-if="field.multiline"
+            v-model:value="editForm[field.key]"
+            :rows="4"
+            :placeholder="field.placeholder"
+          />
+          <a-input
+            v-else
+            v-model:value="editForm[field.key]"
+            :placeholder="field.placeholder"
+          />
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
@@ -79,6 +117,7 @@ import {
   AI_TASK_STATUS,
   AI_TASK_STATUS_LABEL,
   confirmAgentTask,
+  updateAgentTaskStep,
   type AiAgentStep,
   type AiAgentTask,
 } from '../../api/aiAgent';
@@ -100,6 +139,10 @@ const emit = defineEmits<{
 }>();
 
 const confirming = ref(false);
+const savingEdit = ref(false);
+const editOpen = ref(false);
+const editingStep = ref<AiAgentStep | null>(null);
+const editForm = ref<Record<string, string>>({});
 const selectedStepIds = ref<Set<string>>(new Set());
 
 const pendingSteps = computed(
@@ -168,6 +211,7 @@ const statusColor = (status: number) => {
 const present = (step: AiAgentStep) => presentStep(step);
 const presentDone = (step: AiAgentStep) => presentStepDone(step);
 const stepCategory = (step: AiAgentStep) => stepCategoryLabel(step.tool);
+const editFields = computed(() => buildEditableFields(editingStep.value));
 
 function isActionStep(tool: string) {
   return ['createNote', 'extractTodos', 'createTodo', 'createReminder'].includes(tool);
@@ -190,6 +234,40 @@ function toggleStep(stepId: string, checked: boolean) {
   selectedStepIds.value = next;
 }
 
+function openEdit(step: AiAgentStep) {
+  editingStep.value = step;
+  const payload = step.actionPayload || {};
+  const fields = buildEditableFields(step);
+  const next: Record<string, string> = {};
+  fields.forEach((field) => {
+    const value = payload[field.key];
+    next[field.key] = value == null ? '' : String(value);
+  });
+  editForm.value = next;
+  editOpen.value = true;
+}
+
+const saveEdit = async () => {
+  if (!editingStep.value) return;
+  savingEdit.value = true;
+  try {
+    const original = editingStep.value.actionPayload || {};
+    const nextPayload: Record<string, unknown> = { ...original };
+    editFields.value.forEach((field) => {
+      nextPayload[field.key] = editForm.value[field.key]?.trim() || '';
+    });
+    const updated = await updateAgentTaskStep(props.task.id, editingStep.value.id, nextPayload);
+    emit('taskUpdated', updated);
+    editOpen.value = false;
+    editingStep.value = null;
+    message.success('方案已修改');
+  } catch (error: any) {
+    message.error(error?.message || '修改失败');
+  } finally {
+    savingEdit.value = false;
+  }
+};
+
 const confirmSelected = async () => {
   if (!selectedPendingCount.value) return;
   confirming.value = true;
@@ -211,6 +289,78 @@ const confirmSelected = async () => {
 function stepOrder(stepId: string): number {
   const digits = stepId.replace(/\D/g, '');
   return digits ? Number(digits) : Number.MAX_SAFE_INTEGER;
+}
+
+interface EditableField {
+  key: string;
+  label: string;
+  placeholder?: string;
+  multiline?: boolean;
+}
+
+function buildEditableFields(step: AiAgentStep | null): EditableField[] {
+  if (!step) return [];
+  const payload = step.actionPayload || {};
+  const preferred = preferredEditableFields(step.tool);
+  const fields = preferred.filter((field) => Object.prototype.hasOwnProperty.call(payload, field.key));
+  Object.keys(payload).forEach((key) => {
+    if (!fields.some((field) => field.key === key) && isEditablePayloadValue(payload[key])) {
+      fields.push({
+        key,
+        label: payloadFieldLabel(key),
+        placeholder: payloadFieldPlaceholder(key),
+        multiline: key === 'content',
+      });
+    }
+  });
+  return fields;
+}
+
+function preferredEditableFields(tool: string): EditableField[] {
+  const common = {
+    title: { key: 'title', label: '标题', placeholder: '请输入标题' },
+    content: { key: 'content', label: '内容', placeholder: '请输入内容', multiline: true },
+    dueAt: { key: 'dueAt', label: '截止时间', placeholder: '例如 2026-07-07T18:00:00' },
+    triggerAt: { key: 'triggerAt', label: '提醒时间', placeholder: '例如 2026-07-07T18:00:00' },
+    message: { key: 'message', label: '提醒内容', placeholder: '请输入提醒内容' },
+    todoTitle: { key: 'todoTitle', label: '关联待办', placeholder: '请输入关联待办标题' },
+  } satisfies Record<string, EditableField>;
+
+  switch (tool) {
+    case 'createTodo':
+    case 'updateTodo':
+      return [common.title, common.dueAt];
+    case 'createReminder':
+      return [common.message, common.triggerAt, common.todoTitle];
+    case 'createNote':
+    case 'updateNote':
+      return [common.title, common.content];
+    default:
+      return [];
+  }
+}
+
+function isEditablePayloadValue(value: unknown) {
+  return value == null || ['string', 'number', 'boolean'].includes(typeof value);
+}
+
+function payloadFieldLabel(key: string) {
+  const labels: Record<string, string> = {
+    title: '标题',
+    content: '内容',
+    dueAt: '截止时间',
+    triggerAt: '提醒时间',
+    message: '提醒内容',
+    todoTitle: '关联待办',
+    horizon: '时间范围',
+    priority: '优先级',
+  };
+  return labels[key] || key;
+}
+
+function payloadFieldPlaceholder(key: string) {
+  if (key === 'dueAt' || key === 'triggerAt') return '例如 2026-07-07T18:00:00';
+  return undefined;
 }
 </script>
 
@@ -345,6 +495,12 @@ function stepOrder(stepId: string): number {
   margin-bottom: 4px;
 }
 
+.step-edit {
+  height: 22px;
+  padding: 0 2px;
+  font-size: 12px;
+}
+
 .step-summary {
   margin: 0;
   color: #334155;
@@ -381,5 +537,9 @@ function stepOrder(stepId: string): number {
 
 .done-result :deep(.ant-result-icon > .anticon) {
   font-size: 36px;
+}
+
+.edit-form {
+  padding-top: 4px;
 }
 </style>

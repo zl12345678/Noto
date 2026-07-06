@@ -117,6 +117,10 @@ export function confirmAgentTask(taskId: string, stepIds: string[]) {
   return http.post<AiAgentTask>(`/ai/agent/tasks/${taskId}/confirm`, { stepIds });
 }
 
+export function updateAgentTaskStep(taskId: string, stepId: string, actionPayload: Record<string, unknown>) {
+  return http.patch<AiAgentTask>(`/ai/agent/tasks/${taskId}/steps/${stepId}`, { actionPayload });
+}
+
 export function getAgentTask(taskId: string) {
   return http.get<AiAgentTask>(`/ai/agent/tasks/${taskId}`);
 }

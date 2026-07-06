@@ -6,11 +6,13 @@ import com.noto.zhihui.common.exception.BizException;
 import com.noto.zhihui.common.exception.ErrorCode;
 import com.noto.zhihui.dto.ai.AiAgentConfirmRequest;
 import com.noto.zhihui.dto.ai.AiAgentPlanRequest;
+import com.noto.zhihui.dto.ai.AiAgentStepUpdateRequest;
 import com.noto.zhihui.security.UserContext;
 import com.noto.zhihui.service.AiAgentService;
 import com.noto.zhihui.vo.ai.AiAgentTaskVO;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -39,6 +41,15 @@ public class AiAgentController {
             @Valid @RequestBody AiAgentConfirmRequest request
     ) {
         return ApiResponse.success(aiAgentService.confirm(id, request, requireUserId()), null);
+    }
+
+    @PatchMapping("/tasks/{id}/steps/{stepId}")
+    public ApiResponse<AiAgentTaskVO> updateStep(
+            @PathVariable Long id,
+            @PathVariable String stepId,
+            @Valid @RequestBody AiAgentStepUpdateRequest request
+    ) {
+        return ApiResponse.success(aiAgentService.updateStep(id, stepId, request, requireUserId()), null);
     }
 
     @GetMapping("/tasks/{id}")
