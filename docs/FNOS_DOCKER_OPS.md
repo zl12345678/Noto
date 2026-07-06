@@ -872,6 +872,19 @@ MINIO_ROOT_PASSWORD=不是默认值
 NOTO_DEMO_ENABLED=false
 ```
 
+如果需要对外演示，同时自己也要长期使用，建议启用独立演示账号：
+
+```env
+NOTO_DEMO_ENABLED=true
+NOTO_DEMO_USERNAME=demo
+NOTO_DEMO_PASSWORD=改成演示账号密码
+NOTO_DEMO_EMAIL=demo@noto.local
+NOTO_DEMO_NICKNAME=演示账号
+NOTO_DEMO_CREATE_USER=true
+```
+
+这样演示数据会写入 `demo`，`admin` 留给自己使用。演示账号已存在时，重启不会覆盖它的密码。
+
 ### 11.6 健康检查不通
 
 如果使用直连 IPv6 高端口，优先测试：
@@ -927,7 +940,7 @@ sudo ./deploy/prod-up.sh
 - [ ] 默认反代模式：`curl http://127.0.0.1:8080/api/v1/health` 返回 `code:0`。
 - [ ] 双栈直连模式：`curl http://127.0.0.1/api/v1/health` 与 `curl -g -6 "http://[::1]/api/v1/health"` 返回 `code:0`。
 - [ ] Cloudflare Tunnel 模式：`https://notoai.cn/api/v1/health` 返回 `code:0`。
-- [ ] `NOTO_DEMO_ENABLED=false`。
+- [ ] 自用生产环境：`NOTO_DEMO_ENABLED=false`；公开演示环境：使用独立 `demo` 账号，不把演示数据写入 `admin`。
 - [ ] PostgreSQL、MinIO、后端端口未暴露公网。
 - [ ] 已配置数据库定时备份。
 - [ ] 记录好 `.env` 的密钥和密码，不提交到 Git。

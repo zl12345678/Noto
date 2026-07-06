@@ -58,16 +58,20 @@ public final class DemoDataCatalog {
     }
 
     public static List<NoteSeed> allNotes(LocalDate today) {
+        return allNotes(today, "admin", "admin123");
+    }
+
+    public static List<NoteSeed> allNotes(LocalDate today, String demoUsername, String demoPassword) {
         List<NoteSeed> seeds = new ArrayList<>();
-        seeds.addAll(coreNotes(today));
+        seeds.addAll(coreNotes(today, demoUsername, demoPassword));
         seeds.addAll(weeklyMeetings(today, 14));
         seeds.addAll(sprintRetros(10));
-        seeds.addAll(workJournals(today, 10));
+        seeds.addAll(workJournals(today, 10, demoUsername, demoPassword));
         seeds.addAll(projectDocs());
         seeds.addAll(learningNotes());
         seeds.addAll(clientNotes());
         seeds.addAll(referenceClips());
-        seeds.addAll(childNotes());
+        seeds.addAll(childNotes(demoUsername));
         seeds.addAll(inboxFragments());
         return seeds;
     }
@@ -102,7 +106,7 @@ public final class DemoDataCatalog {
         );
     }
 
-    private static List<NoteSeed> coreNotes(LocalDate today) {
+    private static List<NoteSeed> coreNotes(LocalDate today, String demoUsername, String demoPassword) {
         return List.of(
                 new NoteSeed(
                         "周会纪要 · MVP 演示",
@@ -116,7 +120,7 @@ public final class DemoDataCatalog {
                 new NoteSeed(
                         "Noto 功能导览",
                         FOLDER_WORK,
-                        guideContent(),
+                        guideContent(demoUsername, demoPassword),
                         null,
                         List.of("演示"),
                         2,
@@ -213,7 +217,7 @@ public final class DemoDataCatalog {
         return list;
     }
 
-    private static List<NoteSeed> workJournals(LocalDate today, int days) {
+    private static List<NoteSeed> workJournals(LocalDate today, int days, String demoUsername, String demoPassword) {
         List<NoteSeed> list = new ArrayList<>();
         LocalDate cursor = today;
         int added = 0;
@@ -223,7 +227,7 @@ public final class DemoDataCatalog {
                 list.add(new NoteSeed(
                         title,
                         FOLDER_WORK,
-                        journalBody(cursor),
+                        journalBody(cursor, demoUsername, demoPassword),
                         null,
                         List.of("工作"),
                         added + 1,
@@ -278,13 +282,13 @@ public final class DemoDataCatalog {
         );
     }
 
-    private static List<NoteSeed> childNotes() {
+    private static List<NoteSeed> childNotes(String demoUsername) {
         return List.of(
-                new NoteSeed("行动项 · Q2 目标拆解", FOLDER_MEETING, childActionBody("Q2 目标"), "周会纪要 · MVP 演示", List.of("工作"), 1, false),
-                new NoteSeed("行动项 · 客户邮件草稿", FOLDER_WORK, childActionBody("客户邮件"), "客户沟通记录 · Acme", List.of("客户"), 2, false),
-                new NoteSeed("子文档 · API 契约导出", FOLDER_PROJECT, childActionBody("OpenAPI 导出脚本"), "知微架构笔记", List.of("产品"), 6, false),
-                new NoteSeed("子文档 · 看板拖拽规则", FOLDER_PROJECT, childActionBody("看板状态机"), "PRD · 首页行动看板", List.of("产品"), 10, false),
-                new NoteSeed("子文档 · RAG 分块策略", FOLDER_PROJECT, childActionBody("分块 512 tokens"), "技术方案 · RAG 检索", List.of("学习", "产品"), 12, false)
+                new NoteSeed("行动项 · Q2 目标拆解", FOLDER_MEETING, childActionBody("Q2 目标", demoUsername), "周会纪要 · MVP 演示", List.of("工作"), 1, false),
+                new NoteSeed("行动项 · 客户邮件草稿", FOLDER_WORK, childActionBody("客户邮件", demoUsername), "客户沟通记录 · Acme", List.of("客户"), 2, false),
+                new NoteSeed("子文档 · API 契约导出", FOLDER_PROJECT, childActionBody("OpenAPI 导出脚本", demoUsername), "知微架构笔记", List.of("产品"), 6, false),
+                new NoteSeed("子文档 · 看板拖拽规则", FOLDER_PROJECT, childActionBody("看板状态机", demoUsername), "PRD · 首页行动看板", List.of("产品"), 10, false),
+                new NoteSeed("子文档 · RAG 分块策略", FOLDER_PROJECT, childActionBody("分块 512 tokens", demoUsername), "技术方案 · RAG 检索", List.of("学习", "产品"), 12, false)
         );
     }
 
@@ -320,11 +324,11 @@ public final class DemoDataCatalog {
                 """.formatted(today);
     }
 
-    private static String guideContent() {
+    private static String guideContent(String demoUsername, String demoPassword) {
         return """
                 # Noto · 知微 功能导览
 
-                > 演示账号：`admin` / `admin123`
+                > 演示账号：`%s` / `%s`
 
                 ## 15 分钟演示路径
 
@@ -333,7 +337,7 @@ public final class DemoDataCatalog {
                 3. **行动看板** — 首页拖拽：队列 → 进行中 → 完成
                 4. **搜索定位** — 全局搜索或 `Ctrl+K` 搜「Q2」，跳转正文高亮
                 5. **提醒** — 待办中心查看提醒；到期后页内/系统通知
-                """;
+                """.formatted(demoUsername, demoPassword);
     }
 
     private static String roadmapContent() {
@@ -453,7 +457,7 @@ public final class DemoDataCatalog {
                 """.formatted(sprint);
     }
 
-    private static String journalBody(LocalDate day) {
+    private static String journalBody(LocalDate day, String demoUsername, String demoPassword) {
         return """
                 # 工作日志 · %s
 
@@ -470,8 +474,8 @@ public final class DemoDataCatalog {
 
                 ## 备注
 
-                - 演示环境：`admin` / `admin123`
-                """.formatted(day);
+                - 演示环境：`%s` / `%s`
+                """.formatted(day, demoUsername, demoPassword);
     }
 
     private static String prdBody(String feature, String summary) {
@@ -613,14 +617,14 @@ public final class DemoDataCatalog {
                 """.formatted(source, summary);
     }
 
-    private static String childActionBody(String topic) {
+    private static String childActionBody(String topic, String demoUsername) {
         return """
                 ## %s
 
-                - 负责人：admin
+                - 负责人：%s
                 - 状态：进行中
                 - 关联父文档中的行动项列表
-                """.formatted(topic);
+                """.formatted(topic, demoUsername);
     }
 
     private static String fragmentBody(String idea) {

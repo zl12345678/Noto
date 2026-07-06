@@ -3,6 +3,7 @@ package com.noto.zhihui.agent.plan;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.model.chat.ChatModel;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -13,6 +14,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Component
+@ConditionalOnProperty(prefix = "noto.ai", name = "enabled", havingValue = "true")
 public class PlanPatchPlanner {
 
     private static final Pattern REMINDER_RELATIVE_SHIFT = Pattern.compile(

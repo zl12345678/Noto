@@ -43,7 +43,7 @@ noto-backend / noto-db / noto-minio
 
 - 只开放 `22`、`80`、`443`。
 - PostgreSQL、MinIO、后端端口不直接暴露公网。
-- `NOTO_DEMO_ENABLED=false`。
+- `NOTO_DEMO_ENABLED=false`；如果需要公开演示，使用独立 `demo` 账号，不要把演示数据写入自用 `admin`。
 - 所有默认密码、JWT secret 必须替换。
 - 备份数据库，MinIO 数据按业务需要备份。
 
@@ -86,6 +86,23 @@ MINIO_ROOT_PASSWORD=改成强密码
 NOTO_JWT_SECRET=至少32位随机字符串
 NOTO_DEMO_ENABLED=false
 ```
+
+公开演示账号（可选）：
+
+```env
+NOTO_DEMO_ENABLED=true
+NOTO_DEMO_USERNAME=demo
+NOTO_DEMO_PASSWORD=改成演示账号密码
+NOTO_DEMO_EMAIL=demo@noto.local
+NOTO_DEMO_NICKNAME=演示账号
+NOTO_DEMO_CREATE_USER=true
+```
+
+说明：
+
+- `admin` 建议留给站长自己使用，并立即修改默认密码。
+- `demo` 可对外公开，用于演示预置笔记、待办和提醒。
+- 演示种子只会给目标用户写入一次；目标用户已存在时不会重置密码。
 
 启用 AI：
 

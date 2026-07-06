@@ -30,6 +30,7 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,7 +46,6 @@ import java.util.Map;
 public class DemoDataSeeder implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DemoDataSeeder.class);
-    private static final String ADMIN_USERNAME = "admin";
     private static final String SEED_MARKER_KEY = "noto.demo.seeded";
     private static final String SEED_MARKER_V3 = "v3";
 
@@ -69,6 +69,8 @@ public class DemoDataSeeder implements ApplicationRunner {
     private final ReminderService reminderService;
     private final TagService tagService;
     private final UserSettingMapper userSettingMapper;
+    private final NotoDemoProperties demoProperties;
+    private final PasswordEncoder passwordEncoder;
 
     public DemoDataSeeder(
             UserService userService,
@@ -79,7 +81,9 @@ public class DemoDataSeeder implements ApplicationRunner {
             TodoService todoService,
             ReminderService reminderService,
             TagService tagService,
-            UserSettingMapper userSettingMapper
+            UserSettingMapper userSettingMapper,
+            NotoDemoProperties demoProperties,
+            PasswordEncoder passwordEncoder
     ) {
         this.userService = userService;
         this.workspaceService = workspaceService;
@@ -90,14 +94,16 @@ public class DemoDataSeeder implements ApplicationRunner {
         this.reminderService = reminderService;
         this.tagService = tagService;
         this.userSettingMapper = userSettingMapper;
+        this.demoProperties = demoProperties;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
     public void run(ApplicationArguments args) {
         try {
-            UserEntity admin = userService.findByUsername(ADMIN_USERNAME);
-            if (admin != null) {
-                refreshDemoTodoDueDates(admin.getId());
+            UserEntity targetUser = resolveTargetUser();
+            if (targetUser != null) {
+                refreshDemoTodoDueDates(targetUser.getId());
             }
             seedIfNeeded();
         } catch (Exception ex) {
@@ -107,20 +113,23 @@ public class DemoDataSeeder implements ApplicationRunner {
 
     @Transactional
     protected void seedIfNeeded() {
-        UserEntity admin = userService.findByUsername(ADMIN_USERNAME);
-        if (admin == null) {
-            log.info("Demo seed skipped: admin user not found");
+        UserEntity targetUser = resolveTargetUser();
+        String username = resolveUsername();
+        if (targetUser == null) {
+            log.info("Demo seed skipped: target user '{}' not found", username);
             return;
         }
-        Long userId = admin.getId();
+        Long userId = targetUser.getId();
         if (isAlreadySeeded(userId, SEED_MARKER_V3)) {
-            log.info("Demo data v3 already present for admin ({} notes expected, due dates refreshed)",
-                    DemoDataCatalog.allNotes(LocalDate.now()).size());
+            log.info("Demo data v3 already present for {} ({} notes expected, due dates refreshed)",
+                    username,
+                    demoNotes().size());
             return;
         }
 
-        log.info("Demo data seed starting for admin (v3, target {} notes)...",
-                DemoDataCatalog.allNotes(LocalDate.now()).size());
+        log.info("Demo data seed starting for {} (v3, target {} notes)...",
+                username,
+                demoNotes().size());
 
         Long workspaceId = workspaceService.ensureDefaultWorkspace(userId);
         LocalDateTime now = LocalDateTime.now();
@@ -139,7 +148,7 @@ public class DemoDataSeeder implements ApplicationRunner {
 
         Map<String, Long> noteIdsByTitle = new HashMap<>();
         int noteCount = 0;
-        for (DemoDataCatalog.NoteSeed seed : DemoDataCatalog.allNotes(LocalDate.now())) {
+        for (DemoDataCatalog.NoteSeed seed : demoNotes()) {
             Long folderId = folderIds.getOrDefault(seed.folder(), defaultFolderId);
             Long parentId = seed.parentTitle() == null ? null : noteIdsByTitle.get(seed.parentTitle());
             List<Long> linkedTagIds = seed.tags().stream()
@@ -192,12 +201,64 @@ public class DemoDataSeeder implements ApplicationRunner {
 
         markSeeded(userId, SEED_MARKER_V3);
         log.info(
-                "Demo data v3 seeded for admin: {} notes, {} folders, {} todos, {} tags, 2 reminders",
+                "Demo data v3 seeded for {}: {} notes, {} folders, {} todos, {} tags, 2 reminders",
+                username,
                 noteCount,
                 folderIds.size(),
                 todoCount,
                 tagIds.size()
         );
+    }
+
+    private UserEntity resolveTargetUser() {
+        String username = resolveUsername();
+        UserEntity user = userService.findByUsername(username);
+        if (user != null) {
+            workspaceService.ensureDefaultWorkspace(user.getId());
+            return user;
+        }
+        if (!demoProperties.isCreateUser()) {
+            return null;
+        }
+        return createDemoUser(username);
+    }
+
+    private UserEntity createDemoUser(String username) {
+        String email = normalizeOrDefault(demoProperties.getEmail(), username + "@noto.local");
+        UserEntity existingEmailUser = userService.findByEmail(email);
+        if (existingEmailUser != null) {
+            log.warn("Demo seed skipped: email '{}' already belongs to another user", email);
+            return null;
+        }
+        UserEntity user = new UserEntity();
+        user.setUsername(username);
+        user.setEmail(email);
+        user.setNickname(normalizeOrDefault(demoProperties.getNickname(), "演示账号"));
+        user.setPasswordHash(passwordEncoder.encode(resolvePassword()));
+        user.setStatus(0);
+        userService.save(user);
+        workspaceService.createDefaultWorkspace(user.getId());
+        log.info("Demo user '{}' created for demo seed", username);
+        return user;
+    }
+
+    private String resolveUsername() {
+        return normalizeOrDefault(demoProperties.getUsername(), "admin");
+    }
+
+    private String resolvePassword() {
+        return normalizeOrDefault(demoProperties.getPassword(), "admin123");
+    }
+
+    private List<DemoDataCatalog.NoteSeed> demoNotes() {
+        return DemoDataCatalog.allNotes(LocalDate.now(), resolveUsername(), resolvePassword());
+    }
+
+    private String normalizeOrDefault(String value, String fallback) {
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        return value.trim();
     }
 
     private void refreshDemoTodoDueDates(Long userId) {

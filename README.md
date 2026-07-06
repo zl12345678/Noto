@@ -203,11 +203,11 @@ Docker 环境默认启用 MinIO（`NOTO_MINIO_ENABLED=true`），笔记编辑器
 
 ### 演示账号与预置数据
 
-首次启动（`NOTO_DEMO_ENABLED=true`，Docker 默认开启）会自动写入 **v3 演示数据**（仅首次）；待办截止日期会在**每次后端启动**时按当前时间刷新。
+首次启动（`NOTO_DEMO_ENABLED=true`）会自动写入 **v3 演示数据**（仅首次）；待办截止日期会在**每次后端启动**时按当前时间刷新。
 
 | 项 | 内容 |
 |----|------|
-| 账号 | `admin` / `admin123` |
+| 默认账号 | `admin` / `admin123` |
 | 分组 | 6 个（工作 / 项目 / 学习 / 会议 / 灵感 / 参考） |
 | 文档 | **74 篇**（周会、日志、PRD、客户、剪藏等） |
 | 待办 | 20 条 |
@@ -215,7 +215,18 @@ Docker 环境默认启用 MinIO（`NOTO_MINIO_ENABLED=true`），笔记编辑器
 
 关闭演示数据：在 `.env` 中设置 `NOTO_DEMO_ENABLED=false` 后重建 backend 容器。
 
-本地 IDE 开发若需预置数据：`$env:NOTO_DEMO_ENABLED="true"` 后启动后端（需已有 admin 账号）。
+对外演示时建议使用独立账号，避免访客数据污染自己的 `admin` 工作区：
+
+```env
+NOTO_DEMO_ENABLED=true
+NOTO_DEMO_USERNAME=demo
+NOTO_DEMO_PASSWORD=改成演示账号密码
+NOTO_DEMO_EMAIL=demo@noto.local
+NOTO_DEMO_NICKNAME=演示账号
+NOTO_DEMO_CREATE_USER=true
+```
+
+本地 IDE 开发若需预置数据：`$env:NOTO_DEMO_ENABLED="true"` 后启动后端；默认写入 `admin`，也可通过 `NOTO_DEMO_USERNAME` 指定其他账号。
 
 **端口冲突**：若 9086 已被本地后端占用，运行 `.\scripts\demo-up.ps1` 会自动停止本地进程；保留本地后端时用 `.\scripts\demo-up.ps1 -InfraOnly` 或 `.\scripts\dev-up.ps1`（仅启 db/minio）。
 

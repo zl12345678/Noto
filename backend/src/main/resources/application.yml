@@ -47,6 +47,11 @@ noto:
     rag-max-chunks-scan: 3000
   demo:
     enabled: ${NOTO_DEMO_ENABLED:false}
+    username: ${NOTO_DEMO_USERNAME:admin}
+    password: ${NOTO_DEMO_PASSWORD:admin123}
+    email: ${NOTO_DEMO_EMAIL:admin@noto.com}
+    nickname: ${NOTO_DEMO_NICKNAME:演示账号}
+    create-user: ${NOTO_DEMO_CREATE_USER:false}
   minio:
     enabled: false
     endpoint: http://localhost:9000

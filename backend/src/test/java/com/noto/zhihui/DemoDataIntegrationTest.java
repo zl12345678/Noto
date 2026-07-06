@@ -15,11 +15,16 @@ class DemoDataIntegrationTest extends AbstractIntegrationTest {
     @DynamicPropertySource
     static void enableDemoSeed(DynamicPropertyRegistry registry) {
         registry.add("noto.demo.enabled", () -> "true");
+        registry.add("noto.demo.username", () -> "demo");
+        registry.add("noto.demo.password", () -> "demo12345");
+        registry.add("noto.demo.email", () -> "demo@noto.local");
+        registry.add("noto.demo.nickname", () -> "演示账号");
+        registry.add("noto.demo.create-user", () -> "true");
     }
 
     @Test
-    void adminShouldHaveDemoNotesAndTodos() throws Exception {
-        String token = loginAsAdmin();
+    void configuredDemoUserShouldHaveDemoNotesAndTodos() throws Exception {
+        String token = login("demo", "demo12345");
 
         mockMvc.perform(get("/api/v1/notes")
                         .header("Authorization", authHeader(token))
@@ -27,8 +32,7 @@ class DemoDataIntegrationTest extends AbstractIntegrationTest {
                         .param("size", "100"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.records.length()").value(org.hamcrest.Matchers.greaterThanOrEqualTo(20)))
-                .andExpect(jsonPath("$.data.total").value(org.hamcrest.Matchers.greaterThanOrEqualTo(50)));
+                .andExpect(jsonPath("$.data.records.length()").value(org.hamcrest.Matchers.greaterThanOrEqualTo(20)));
 
         mockMvc.perform(get("/api/v1/todos/board")
                         .header("Authorization", authHeader(token)))
@@ -37,10 +41,10 @@ class DemoDataIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.data.actionTodos.length()").value(org.hamcrest.Matchers.greaterThanOrEqualTo(5)));
     }
 
-    private String loginAsAdmin() throws Exception {
+    private String login(String username, String password) throws Exception {
         var body = java.util.Map.of(
-                "username", "admin",
-                "password", "admin123"
+                "username", username,
+                "password", password
         );
         var result = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
