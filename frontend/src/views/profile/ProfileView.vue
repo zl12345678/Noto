@@ -42,22 +42,29 @@
             <a-form-item label="昵称" name="nickname" :rules="[{ required: true, message: '请输入昵称' }]">
               <a-input v-model:value="formState.nickname" size="large" />
             </a-form-item>
+            <p v-if="isDemoAccount" class="field-hint">演示账号不支持修改密码。</p>
             <a-form-item
               label="当前密码"
               name="oldPassword"
-              :rules="formState.newPassword ? [{ required: true, message: '修改密码请输入当前密码' }] : []"
+              :rules="!isDemoAccount && formState.newPassword ? [{ required: true, message: '修改密码请输入当前密码' }] : []"
             >
               <a-input-password
                 v-model:value="formState.oldPassword"
                 size="large"
                 placeholder="仅修改密码时填写"
+                :disabled="isDemoAccount"
               />
             </a-form-item>
             <a-form-item label="新密码" name="newPassword" :rules="optionalPasswordFieldRules">
-              <a-input-password v-model:value="formState.newPassword" size="large" placeholder="留空表示不修改" />
+              <a-input-password
+                v-model:value="formState.newPassword"
+                size="large"
+                placeholder="留空表示不修改"
+                :disabled="isDemoAccount"
+              />
             </a-form-item>
             <a-form-item
-              v-if="formState.newPassword"
+              v-if="!isDemoAccount && formState.newPassword"
               label="确认新密码"
               name="confirmPassword"
               :rules="[{ required: true, message: '请再次输入新密码' }, confirmPasswordRule(() => formState.newPassword)]"
@@ -288,6 +295,7 @@ const styleOptions = [
 const displayName = computed(() => authStore.currentUser?.nickname || authStore.currentUser?.username || '用户');
 const avatarText = computed(() => displayName.value.slice(0, 1).toUpperCase());
 const avatarStyle = computed(() => ({ backgroundColor: '#1677ff' }));
+const isDemoAccount = computed(() => authStore.currentUser?.username === 'demo');
 
 const formState = reactive({
   nickname: '',
@@ -305,7 +313,7 @@ const handleSave = async () => {
   try {
     const updatedUser = await updateProfile({ nickname: formState.nickname });
     authStore.currentUser = updatedUser;
-    if (formState.newPassword) {
+    if (!isDemoAccount.value && formState.newPassword) {
       await changePassword({ oldPassword: formState.oldPassword, newPassword: formState.newPassword });
       formState.oldPassword = '';
       formState.newPassword = '';

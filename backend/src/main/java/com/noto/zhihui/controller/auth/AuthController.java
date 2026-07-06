@@ -3,6 +3,7 @@ package com.noto.zhihui.controller.auth;
 import com.noto.zhihui.common.api.ApiResponse;
 import com.noto.zhihui.common.exception.BizException;
 import com.noto.zhihui.common.exception.ErrorCode;
+import com.noto.zhihui.config.NotoDemoProperties;
 import com.noto.zhihui.dto.auth.ChangePasswordRequest;
 import com.noto.zhihui.dto.auth.LoginRequest;
 import com.noto.zhihui.dto.auth.RegisterRequest;
@@ -40,17 +41,20 @@ public class AuthController {
     private final UserService userService;
     private final WorkspaceService workspaceService;
     private final PasswordEncoder passwordEncoder;
+    private final NotoDemoProperties demoProperties;
 
     public AuthController(
             JwtTokenService jwtTokenService,
             UserService userService,
             WorkspaceService workspaceService,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            NotoDemoProperties demoProperties
     ) {
         this.jwtTokenService = jwtTokenService;
         this.userService = userService;
         this.workspaceService = workspaceService;
         this.passwordEncoder = passwordEncoder;
+        this.demoProperties = demoProperties;
     }
 
     @PostConstruct
@@ -176,12 +180,24 @@ public class AuthController {
         if (user == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED);
         }
+        if (isProtectedDemoUser(user)) {
+            throw new BizException(ErrorCode.DEMO_PASSWORD_CHANGE_FORBIDDEN);
+        }
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
             throw new BizException(ErrorCode.PASSWORD_INVALID);
         }
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userService.updateById(user);
         return ApiResponse.success(null, null);
+    }
+
+    private boolean isProtectedDemoUser(UserEntity user) {
+        String demoUsername = demoProperties.getUsername();
+        if (!demoProperties.isEnabled() || demoUsername == null || demoUsername.isBlank()) {
+            return false;
+        }
+        demoUsername = demoUsername.trim();
+        return !"admin".equals(demoUsername) && demoUsername.equals(user.getUsername());
     }
 
     @PostMapping("/logout")
