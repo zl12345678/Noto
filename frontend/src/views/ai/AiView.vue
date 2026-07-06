@@ -286,6 +286,7 @@ import {
   listAiChatMessages,
   listAiChatSessions,
   stripKnowledgeGaps,
+  type AiChatMessageRecord,
   type AiChatSession,
   type AiReference,
   type AiStatus,
@@ -483,7 +484,7 @@ const loadAgentTasks = async () => {
     return;
   }
   try {
-    const page = await listAgentTasks({ workspaceId: aiChat.workspaceId, page: 1, size: 10 });
+    const page = await listAgentTasks({ workspaceId: aiChat.workspaceId, page: 1, size: 50 });
     agentTasks.value = page.records || [];
   } catch {
     agentTasks.value = [];
@@ -515,15 +516,12 @@ const openSession = async (session: AiChatSession) => {
 
   sessionLoading.value = true;
   try {
-    const records = await listAiChatMessages(session.id);
-    aiChat.messages = records.map((item) => ({
-      id: item.id,
-      role: item.role === 'assistant' ? 'assistant' : 'user',
-      content: item.content,
-      references: item.references,
-      kind: 'text' as const,
-      intent: 'chat' as const,
-    }));
+    const [records, taskPage] = await Promise.all([
+      listAiChatMessages(session.id),
+      listAgentTasks({ workspaceId: session.workspaceId, page: 1, size: 50 }).catch(() => ({ records: [] })),
+    ]);
+    agentTasks.value = taskPage.records || [];
+    aiChat.messages = restoreAgentTasksForMessages(records, agentTasks.value);
     await nextTick();
     await scrollToBottom();
   } catch (error: any) {
@@ -533,6 +531,79 @@ const openSession = async (session: AiChatSession) => {
     sessionLoading.value = false;
   }
 };
+
+function restoreAgentTasksForMessages(records: AiChatMessageRecord[], tasks: AiAgentTask[]) {
+  const usedTaskIds = new Set<string>();
+  const taskCandidates = tasks
+    .filter((task) => task.instruction && task.assistantReply)
+    .sort((a, b) => taskTime(b) - taskTime(a));
+
+  return records.map((item, index) => {
+    const base = {
+      id: item.id,
+      role: item.role === 'assistant' ? 'assistant' as const : 'user' as const,
+      content: item.content,
+      references: item.references,
+      kind: 'text' as const,
+      intent: 'chat' as const,
+    };
+    if (base.role !== 'assistant') {
+      return base;
+    }
+    const previousUser = findPreviousUserContent(records, index);
+    const matched = matchAgentTaskForMessage(item, previousUser, taskCandidates, usedTaskIds);
+    if (!matched) {
+      return base;
+    }
+    usedTaskIds.add(String(matched.id));
+    return {
+      ...base,
+      content: matched.assistantReply || item.content,
+      kind: 'agent' as const,
+      intent: 'agent' as const,
+      agentTask: matched,
+    };
+  });
+}
+
+function findPreviousUserContent(records: AiChatMessageRecord[], index: number) {
+  for (let i = index - 1; i >= 0; i -= 1) {
+    if (records[i]?.role === 'user') {
+      return records[i].content?.trim() || '';
+    }
+  }
+  return '';
+}
+
+function matchAgentTaskForMessage(
+  messageRecord: AiChatMessageRecord,
+  previousUser: string,
+  tasks: AiAgentTask[],
+  usedTaskIds: Set<string>,
+) {
+  const messageTime = messageRecord.createdAt ? dayjs(messageRecord.createdAt) : null;
+  return tasks
+    .filter((task) => !usedTaskIds.has(String(task.id)))
+    .filter((task) => task.instruction?.trim() === previousUser)
+    .map((task) => {
+      const sameReply = task.assistantReply?.trim() === messageRecord.content?.trim();
+      const distance = timeDistance(task.createdAt, messageTime);
+      return { task, score: (sameReply ? 0 : 1_000_000) + distance };
+    })
+    .sort((a, b) => a.score - b.score)[0]?.task;
+}
+
+function timeDistance(value?: string | null, target?: ReturnType<typeof dayjs> | null) {
+  if (!value || !target?.isValid()) return Number.MAX_SAFE_INTEGER / 2;
+  const parsed = dayjs(value);
+  if (!parsed.isValid()) return Number.MAX_SAFE_INTEGER / 2;
+  return Math.abs(parsed.valueOf() - target.valueOf());
+}
+
+function taskTime(task: AiAgentTask) {
+  const parsed = dayjs(task.createdAt);
+  return parsed.isValid() ? parsed.valueOf() : 0;
+}
 
 const ensureSession = async (firstQuestion: string) => {
   if (aiChat.sessionId) return aiChat.sessionId;
