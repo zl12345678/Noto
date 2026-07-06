@@ -44,6 +44,7 @@
               <a-checkbox v-model:checked="formState.rememberMe">记住密码</a-checkbox>
               <a-button type="link" style="padding: 0" @click="handleForgotPassword">忘记密码</a-button>
             </div>
+            <p class="auth-demo-tip">演示账号 demo，密码 123456</p>
             <a-button type="primary" html-type="submit" block size="large" :loading="loading">登录</a-button>
             <div class="auth-footer-link">
               还没有账号？<a @click="goRegister">注册</a>
@@ -66,8 +67,8 @@ const authStore = useAuthStore();
 const loading = ref(false);
 
 const formState = reactive({
-  username: 'demo',
-  password: '123456',
+  username: '',
+  password: '',
   rememberMe: true,
 });
 
@@ -92,3 +93,12 @@ const handleForgotPassword = () => {
   router.push('/forgot-password');
 };
 </script>
+
+<style scoped>
+.auth-demo-tip {
+  margin: -2px 0 14px;
+  color: #8c8c8c;
+  font-size: 12px;
+  line-height: 1.5;
+}
+</style>
