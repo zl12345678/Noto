@@ -224,6 +224,7 @@ NOTO_DEMO_PASSWORD=改成演示账号密码
 NOTO_DEMO_EMAIL=demo@noto.local
 NOTO_DEMO_NICKNAME=演示账号
 NOTO_DEMO_CREATE_USER=true
+NOTO_DEMO_RESET_PASSWORD=true
 ```
 
 本地 IDE 开发若需预置数据：`$env:NOTO_DEMO_ENABLED="true"` 后启动后端；默认写入 `admin`，也可通过 `NOTO_DEMO_USERNAME` 指定其他账号。

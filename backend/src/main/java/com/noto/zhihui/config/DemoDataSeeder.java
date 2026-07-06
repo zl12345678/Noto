@@ -214,6 +214,7 @@ public class DemoDataSeeder implements ApplicationRunner {
         String username = resolveUsername();
         UserEntity user = userService.findByUsername(username);
         if (user != null) {
+            syncDemoPasswordIfNeeded(user);
             workspaceService.ensureDefaultWorkspace(user.getId());
             return user;
         }
@@ -221,6 +222,23 @@ public class DemoDataSeeder implements ApplicationRunner {
             return null;
         }
         return createDemoUser(username);
+    }
+
+    private void syncDemoPasswordIfNeeded(UserEntity user) {
+        if (!demoProperties.isResetPassword()) {
+            return;
+        }
+        String username = resolveUsername();
+        if ("admin".equals(username) || !username.equals(user.getUsername())) {
+            return;
+        }
+        String password = resolvePassword();
+        if (passwordEncoder.matches(password, user.getPasswordHash())) {
+            return;
+        }
+        user.setPasswordHash(passwordEncoder.encode(password));
+        userService.updateById(user);
+        log.info("Demo user '{}' password synchronized from demo configuration", username);
     }
 
     private UserEntity createDemoUser(String username) {

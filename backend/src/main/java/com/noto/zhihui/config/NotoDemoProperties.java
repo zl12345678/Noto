@@ -26,4 +26,7 @@ public class NotoDemoProperties {
 
     /** 目标用户不存在时是否自动创建；默认关闭以保持生产环境显式配置。 */
     private boolean createUser = false;
+
+    /** 目标用户已存在时是否把密码同步为 password；仅建议用于独立演示账号。 */
+    private boolean resetPassword = false;
 }

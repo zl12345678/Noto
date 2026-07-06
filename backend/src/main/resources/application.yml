@@ -52,6 +52,7 @@ noto:
     email: ${NOTO_DEMO_EMAIL:admin@noto.com}
     nickname: ${NOTO_DEMO_NICKNAME:演示账号}
     create-user: ${NOTO_DEMO_CREATE_USER:false}
+    reset-password: ${NOTO_DEMO_RESET_PASSWORD:false}
   minio:
     enabled: false
     endpoint: http://localhost:9000

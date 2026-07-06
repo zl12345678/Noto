@@ -881,9 +881,10 @@ NOTO_DEMO_PASSWORD=改成演示账号密码
 NOTO_DEMO_EMAIL=demo@noto.local
 NOTO_DEMO_NICKNAME=演示账号
 NOTO_DEMO_CREATE_USER=true
+NOTO_DEMO_RESET_PASSWORD=true
 ```
 
-这样演示数据会写入 `demo`，`admin` 留给自己使用。演示账号已存在时，重启不会覆盖它的密码。
+这样演示数据会写入 `demo`，`admin` 留给自己使用。演示账号已存在时，`NOTO_DEMO_RESET_PASSWORD=true` 会把它的密码同步为 `NOTO_DEMO_PASSWORD`，避免本地和飞牛密码不一致。
 
 ### 11.6 健康检查不通
 

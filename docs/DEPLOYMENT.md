@@ -96,13 +96,14 @@ NOTO_DEMO_PASSWORD=改成演示账号密码
 NOTO_DEMO_EMAIL=demo@noto.local
 NOTO_DEMO_NICKNAME=演示账号
 NOTO_DEMO_CREATE_USER=true
+NOTO_DEMO_RESET_PASSWORD=true
 ```
 
 说明：
 
 - `admin` 建议留给站长自己使用，并立即修改默认密码。
 - `demo` 可对外公开，用于演示预置笔记、待办和提醒。
-- 演示种子只会给目标用户写入一次；目标用户已存在时不会重置密码。
+- 演示种子只会给目标用户写入一次；`NOTO_DEMO_RESET_PASSWORD=true` 会在启动时把独立演示账号密码同步为 `NOTO_DEMO_PASSWORD`。
 
 启用 AI：
 
