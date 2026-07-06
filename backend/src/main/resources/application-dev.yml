@@ -26,6 +26,12 @@ noto:
     api-key: ${AI_DASHSCOPE_API_KEY:}
   demo:
     enabled: ${NOTO_DEMO_ENABLED:true}
+    username: ${NOTO_DEMO_USERNAME:demo}
+    password: ${NOTO_DEMO_PASSWORD:123456}
+    email: ${NOTO_DEMO_EMAIL:demo@noto.local}
+    nickname: ${NOTO_DEMO_NICKNAME:演示账号}
+    create-user: ${NOTO_DEMO_CREATE_USER:true}
+    reset-password: ${NOTO_DEMO_RESET_PASSWORD:true}
   minio:
     enabled: true
     endpoint: http://localhost:9000
