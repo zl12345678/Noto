@@ -396,7 +396,14 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, NoteEntity> impleme
         note.setSortOrder(request.getSortOrder());
         note.setUpdatedBy(userId);
         note.setLastEditedAt(LocalDateTime.now());
-        updateById(note);
+        lambdaUpdate()
+                .eq(NoteEntity::getId, note.getId())
+                .set(NoteEntity::getFolderId, note.getFolderId())
+                .set(NoteEntity::getParentId, note.getParentId())
+                .set(NoteEntity::getSortOrder, note.getSortOrder())
+                .set(NoteEntity::getUpdatedBy, note.getUpdatedBy())
+                .set(NoteEntity::getLastEditedAt, note.getLastEditedAt())
+                .update();
         return toVO(note, noteTagService.listTagsByNoteId(note.getId()), false, null);
     }
 

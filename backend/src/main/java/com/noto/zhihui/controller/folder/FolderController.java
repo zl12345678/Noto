@@ -109,7 +109,11 @@ public class FolderController {
         }
         folder.setParentId(newParentId);
         folder.setSortOrder(request.getSortOrder());
-        noteFolderService.updateById(folder);
+        noteFolderService.lambdaUpdate()
+                .eq(NoteFolderEntity::getId, folder.getId())
+                .set(NoteFolderEntity::getParentId, folder.getParentId())
+                .set(NoteFolderEntity::getSortOrder, folder.getSortOrder())
+                .update();
         return ApiResponse.success(toVO(folder), null);
     }
 
