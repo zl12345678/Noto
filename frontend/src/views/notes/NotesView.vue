@@ -2390,17 +2390,17 @@ const onTreeChange = async (payload: {
     return;
   }
 
-  const move = resolveTreeMoveFromTargetInfo(
-    payload.targetInfo,
-    payload.dragKey,
-    folders.value,
-    notes.value,
-  ) ?? resolveTreeMoveFromFinalTree(
+  const move = resolveTreeMoveFromFinalTree(
     displayTreeData.value as TreeNodeSnapshot[],
     payload.dragKey,
     folders.value,
     notes.value,
     null,
+  ) ?? resolveTreeMoveFromTargetInfo(
+    payload.targetInfo,
+    payload.dragKey,
+    folders.value,
+    notes.value,
   );
 
   if (!move) {
