@@ -52,7 +52,7 @@ export function uploadDriveFile(workspaceId: string, file: File, folderId?: stri
   return http.post<DriveFile>('/drive/upload', formData, {
     params: { workspaceId, folderId },
     headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 60000,
+    timeout: 300000,
   });
 }
 

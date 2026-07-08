@@ -38,7 +38,7 @@ export function uploadAttachment(noteId: string, file: File) {
   formData.append('noteId', noteId);
   return http.post<AttachmentVO>('/attachments/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 60000,
+    timeout: 300000,
   });
 }
 

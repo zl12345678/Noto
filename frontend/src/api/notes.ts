@@ -154,6 +154,6 @@ export function importNoteFile(
       ...(title ? { title } : {}),
     },
     headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 60000,
+    timeout: 300000,
   });
 }
