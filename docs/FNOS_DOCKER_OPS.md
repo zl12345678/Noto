@@ -640,7 +640,207 @@ https://notoai.cn      走 Cloudflare Tunnel，IPv4/IPv6 都可访问
 http://v6.notoai.cn    走家庭 IPv6 直连备用
 ```
 
-#### 7.4.6 验证访问
+#### 7.4.6 IPv6 直连备用：Cloudflare AAAA DDNS
+
+家庭宽带 IPv6 可能会变化。若 `v6.notoai.cn` 只配置一次静态 AAAA，IPv6 变更后会访问到旧地址。建议在飞牛上配置 DDNS 脚本，定时把当前公网 IPv6 写回 Cloudflare 的 `v6.notoai.cn` AAAA 记录。
+
+Cloudflare API Token 建议只给 `notoai.cn` 最小权限：
+
+```text
+Zone - DNS - Edit
+Zone - Zone - Read
+Zone Resources：Include - Specific zone - notoai.cn
+```
+
+Token 只显示一次，勿提交到 Git，也不要发到聊天或日志中。如果泄露，应立即在 Cloudflare 删除旧 Token 并重新创建。
+
+创建配置文件：
+
+```bash
+sudo mkdir -p /opt/noto-ddns
+sudo nano /opt/noto-ddns/cloudflare-ddns.env
+```
+
+写入：
+
+```bash
+CF_API_TOKEN='你的Cloudflare_API_Token'
+CF_ZONE_NAME='notoai.cn'
+CF_RECORD_NAME='v6.notoai.cn'
+```
+
+设置权限：
+
+```bash
+sudo chmod 600 /opt/noto-ddns/cloudflare-ddns.env
+```
+
+创建脚本：
+
+```bash
+sudo tee /opt/noto-ddns/cloudflare-ddns-ipv6.sh >/dev/null <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+source /opt/noto-ddns/cloudflare-ddns.env
+
+API="https://api.cloudflare.com/client/v4"
+CURL=(curl -4 -fsS --connect-timeout 8 --max-time 20)
+
+IPV6="$(
+  ip -6 -o addr show scope global \
+    | awk '/mngtmpaddr/ {print $4; exit}' \
+    | cut -d/ -f1
+)"
+
+if [ -z "${IPV6}" ]; then
+  IPV6="$(
+    ip -6 -o addr show scope global \
+      | awk '{print $4; exit}' \
+      | cut -d/ -f1
+  )"
+fi
+
+if [ -z "${IPV6}" ]; then
+  echo "No global IPv6 found"
+  exit 1
+fi
+
+ZONE_JSON="$(
+  "${CURL[@]}" \
+    -H "Authorization: Bearer ${CF_API_TOKEN}" \
+    -H "Content-Type: application/json" \
+    "${API}/zones?name=${CF_ZONE_NAME}"
+)"
+
+ZONE_ID="$(
+  echo "$ZONE_JSON" \
+  | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['result'][0]['id'] if data.get('result') else '')"
+)"
+
+if [ -z "${ZONE_ID}" ]; then
+  echo "Zone not found or token has no permission: ${CF_ZONE_NAME}"
+  echo "$ZONE_JSON"
+  exit 1
+fi
+
+RECORD_JSON="$(
+  "${CURL[@]}" \
+    -H "Authorization: Bearer ${CF_API_TOKEN}" \
+    -H "Content-Type: application/json" \
+    "${API}/zones/${ZONE_ID}/dns_records?type=AAAA&name=${CF_RECORD_NAME}"
+)"
+
+RECORD_ID="$(
+  echo "$RECORD_JSON" \
+  | python3 -c "import sys,json; data=json.load(sys.stdin).get('result', []); print(data[0]['id'] if data else '')"
+)"
+
+OLD_IP="$(
+  echo "$RECORD_JSON" \
+  | python3 -c "import sys,json; data=json.load(sys.stdin).get('result', []); print(data[0]['content'] if data else '')"
+)"
+
+if [ -z "${RECORD_ID}" ]; then
+  echo "AAAA record not found: ${CF_RECORD_NAME}"
+  echo "Please create it in Cloudflare first."
+  exit 1
+fi
+
+if [ "${OLD_IP}" = "${IPV6}" ]; then
+  echo "No change: ${CF_RECORD_NAME} -> ${IPV6}"
+  exit 0
+fi
+
+"${CURL[@]}" -X PATCH \
+  -H "Authorization: Bearer ${CF_API_TOKEN}" \
+  -H "Content-Type: application/json" \
+  --data "{\"type\":\"AAAA\",\"name\":\"${CF_RECORD_NAME}\",\"content\":\"${IPV6}\",\"ttl\":300,\"proxied\":false}" \
+  "${API}/zones/${ZONE_ID}/dns_records/${RECORD_ID}" >/dev/null
+
+echo "Updated: ${CF_RECORD_NAME} ${OLD_IP} -> ${IPV6}"
+EOF
+
+sudo chmod +x /opt/noto-ddns/cloudflare-ddns-ipv6.sh
+```
+
+手动测试：
+
+```bash
+sudo /opt/noto-ddns/cloudflare-ddns-ipv6.sh
+```
+
+正常输出类似：
+
+```text
+Updated: v6.notoai.cn 旧IPv6 -> 新IPv6
+No change: v6.notoai.cn -> 当前IPv6
+```
+
+检查解析：
+
+```bash
+nslookup -type=AAAA v6.notoai.cn 1.1.1.1
+nslookup -type=AAAA v6.notoai.cn 223.5.5.5
+```
+
+添加定时任务：
+
+```bash
+sudo crontab -e
+```
+
+每 5 分钟执行一次：
+
+```cron
+*/5 * * * * /opt/noto-ddns/cloudflare-ddns-ipv6.sh >> /var/log/noto-cloudflare-ddns.log 2>&1
+```
+
+检查定时任务是否添加成功：
+
+```bash
+sudo crontab -l
+```
+
+应看到：
+
+```cron
+*/5 * * * * /opt/noto-ddns/cloudflare-ddns-ipv6.sh >> /var/log/noto-cloudflare-ddns.log 2>&1
+```
+
+检查 cron 服务：
+
+```bash
+systemctl status cron
+systemctl status crond
+```
+
+不同系统服务名可能是 `cron` 或 `crond`，其中一个存在并处于运行状态即可。
+
+查看 DDNS 日志：
+
+```bash
+sudo tail -n 50 /var/log/noto-cloudflare-ddns.log
+```
+
+如果日志文件还不存在，可先手动写入一次：
+
+```bash
+sudo /opt/noto-ddns/cloudflare-ddns-ipv6.sh >> /var/log/noto-cloudflare-ddns.log 2>&1
+sudo tail -n 20 /var/log/noto-cloudflare-ddns.log
+```
+
+如果脚本一直没有输出，通常是访问 Cloudflare API 卡住。先按 `Ctrl + C` 停止，再测试：
+
+```bash
+curl -4 -I --connect-timeout 8 --max-time 20 https://api.cloudflare.com/client/v4/
+curl -6 -I --connect-timeout 8 --max-time 20 https://api.cloudflare.com/client/v4/
+sudo bash -x /opt/noto-ddns/cloudflare-ddns-ipv6.sh
+```
+
+脚本默认用 `curl -4` 调 Cloudflare API，可避开部分家庭网络的 IPv6 出口问题；它更新的仍然是飞牛当前公网 IPv6。
+
+#### 7.4.7 验证访问
 
 刷新 Windows DNS 缓存：
 
@@ -663,7 +863,7 @@ https://notoai.cn
 
 如果 Windows 命令行 `curl` 报证书吊销检查超时，优先用浏览器验证；也可以换手机 4G/5G 测试。
 
-#### 7.4.7 常见问题
+#### 7.4.8 常见问题
 
 如果 Cloudflare 添加 Public Hostname 时 `Domain` 下拉里没有 `notoai.cn`，说明域名还没有成功接入 Cloudflare，需要先等待站点状态变成 `Active`。
 
